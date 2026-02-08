@@ -1,0 +1,136 @@
+.novel-card {
+  position: relative; /* fix badge position */
+  background: #121212;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  margin: 10px; /* spacing between cards */
+}
+
+.novel-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Cover Image */
+.novel-cover {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  background: #1e1e1e;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+
+/* Content */
+.novel-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.novel-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.novel-description {
+  font-size: 0.85rem;
+  color: #bdbdbd;
+  line-height: 1.4;
+  max-height: 3.6em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Meta info */
+.novel-meta {
+  display: flex;
+  justify-content: flex-start; /* left align tags */
+  gap: 6px; /* spacing between tags */
+  font-size: 0.75rem;
+  color: #9e9e9e;
+  margin-top: 6px;
+}
+
+.novel-tag {
+  background: #1f1f1f;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  color: #ddd;
+}
+
+/* Actions */
+.novel-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.novel-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.novel-btn.read {
+  background: #6c63ff;
+  color: white;
+}
+
+.novel-btn.read:hover {
+  background: #584fff;
+}
+
+.novel-btn.bookmark {
+  background: #1e1e1e;
+  color: #ccc;
+}
+
+.novel-btn.bookmark:hover {
+  background: #2a2a2a;
+}
+
+/* Status badge */
+.novel-status {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.novel-status.published {
+  background: #2e7d32;
+}
+
+.novel-status.draft {
+  background: #9e9e9e;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .novel-cover {
+    height: 180px;
+  }
+
+  .novel-content {
+    padding: 12px;
+  }
+}

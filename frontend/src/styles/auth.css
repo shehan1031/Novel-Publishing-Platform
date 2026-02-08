@@ -1,0 +1,119 @@
+/* ===== AUTH PAGE ===== */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center; /* horizontal center */
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  padding: 60px 20px 40px 20px; /* top padding for navbar */
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Optional: floating form card shadow effect */
+.auth-form {
+  width: 100%;
+  max-width: 450px;
+  background: #ffffff;
+  padding: 50px 35px;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.6s ease-out;
+  position: relative;
+  top: 40px; /* slight float below navbar */
+}
+
+/* Headings */
+.auth-form h2 {
+  font-size: 2rem;
+  margin-bottom: 25px;
+  color: #4f46e5;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Inputs & Select */
+.auth-form input,
+.auth-form select {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.auth-form input:focus,
+.auth-form select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* Buttons */
+.auth-form button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 5px;
+  border: none;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.auth-form button:hover {
+  background: #4338ca;
+  transform: translateY(-2px);
+}
+
+.auth-form button:disabled {
+  background: #a5b4fc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Footer Links */
+.auth-footer {
+  margin-top: 20px;
+  font-size: 0.95rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.auth-footer a {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .auth-form {
+    padding: 35px 20px;
+    border-radius: 12px;
+  }
+
+  .auth-form h2 {
+    font-size: 1.6rem;
+  }
+}

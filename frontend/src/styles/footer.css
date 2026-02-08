@@ -1,0 +1,79 @@
+/* footer.css */
+
+/* ===== FOOTER BASE ===== */
+.footer {
+  background-color: #121212; /* Dark background for SaaS look */
+  color: #e5e7eb; /* Light text */
+  padding: 40px 20px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid #1f1f1f;
+}
+
+/* Footer content wrapper */
+.footer-content {
+  max-width: 1200px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Footer text */
+.footer-text {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Footer links container */
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* Individual links */
+.footer-link {
+  color: #38bdf8; /* SaaS brand accent */
+  font-weight: 500;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Hover effect */
+.footer-link:hover {
+  color: #60a5fa;
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
+/* Language-specific classes (optional) */
+.footer.lang-en .footer-text,
+.footer.lang-si .footer-text,
+.footer.lang-ta .footer-text {
+  /* Can customize per language if needed */
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .footer-content {
+    gap: 10px;
+  }
+
+  .footer-links {
+    gap: 12px;
+  }
+
+  .footer-link {
+    font-size: 0.9rem;
+  }
+
+  .footer-text {
+    font-size: 0.9rem;
+  }
+}

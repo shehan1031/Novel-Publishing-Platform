@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+// Register
 exports.register = async (req, res) => {
   const { email, password, role, language } = req.body;
 
@@ -17,9 +18,19 @@ exports.register = async (req, res) => {
     language
   });
 
-  res.status(201).json({ message: "Registered successfully" });
+  // create JWT
+  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+
+  res.status(201).json({
+    message: "Registered successfully",
+    user: { id: user._id, email: user.email, role: user.role, language: user.language, points: user.points },
+    token,
+  });
 };
 
+// Login
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -29,24 +40,17 @@ exports.login = async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 
   res.json({
     token,
-    user: {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      language: user.language,
-      points: user.points
-    }
+    user: { id: user._id, email: user.email, role: user.role, language: user.language, points: user.points },
   });
 };
 
+// Get current user
 exports.getMe = async (req, res) => {
   const user = await User.findById(req.user.id).select("-password");
   res.json(user);

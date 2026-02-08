@@ -1,0 +1,83 @@
+/* ===== HOME PAGE ===== */
+.home-container {
+  padding: 30px 15px;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: #121212;
+}
+
+.home-hero {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.home-hero h1 {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  color: #121212;
+}
+
+.home-hero p {
+  font-size: 1.25rem;
+  color: #555555;
+  margin-bottom: 25px;
+}
+
+.home-hero button {
+  padding: 12px 25px;
+  font-size: 1rem;
+  background-color: #121212;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+}
+
+.home-hero button:hover { background-color: #333; }
+.home-hero button:active { transform: scale(0.97); }
+
+.novels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.novel-card {
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.novel-card img {
+  width: 100%;
+  display: block;
+  border-bottom: 1px solid #eee;
+}
+
+.novel-card .novel-info {
+  padding: 15px;
+}
+
+.novel-card .novel-info h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: #121212;
+}
+
+.novel-card .novel-info p {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.novel-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 768px) {
+  .home-hero h1 { font-size: 2.2rem; }
+  .home-hero p { font-size: 1rem; }
+  .novels-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}

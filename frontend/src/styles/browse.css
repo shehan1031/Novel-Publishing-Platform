@@ -1,0 +1,104 @@
+/* src/styles/browse.css */
+
+.browse-page {
+  min-height: 100vh;
+  background: #0f172a; /* dark professional background */
+  color: #e5e7eb;
+  padding: 50px 20px;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center content horizontally */
+}
+
+.browse-header {
+  max-width: 1200px;
+  width: 100%;
+  margin-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center header content */
+  text-align: center;
+}
+
+.browse-header h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #38bdf8;
+  margin-bottom: 20px;
+  border-left: none; /* remove left border for center alignment */
+  padding-left: 0;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* center filters */
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.filters input,
+.filters select {
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: #1e293b;
+  color: #e5e7eb;
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+.filters input::placeholder {
+  color: #9ca3af;
+}
+
+.filters input:focus,
+.filters select:focus {
+  box-shadow: 0 0 8px #38bdf8;
+  background: #1f2a46;
+}
+
+/* Novels grid */
+.novels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 25px;
+  justify-items: center; /* center cards inside each cell */
+  max-width: 1200px;
+  width: 100%;
+}
+
+/* Hover effect for NovelCard */
+.novels-grid .novel-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.novels-grid .novel-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.45);
+}
+
+/* Loading & Empty */
+.loading,
+.empty {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #9ca3af;
+  margin-top: 60px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .novels-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+}

@@ -2,21 +2,28 @@ const mongoose = require("mongoose");
 
 const chapterSchema = new mongoose.Schema(
   {
+    title: { type: String, required: true },
+    content: { type: String, default: "" },
+    order: { type: Number, default: 1 },
+
     novel: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Novel"
+      ref: "Novel",
+      required: true,
     },
-    title: String,
-    content: String,
-    chapterNumber: Number,
-    isPremium: {
-      type: Boolean,
-      default: false
+
+    // ✅ NEW
+    status: {
+      type: String,
+      enum: ["draft", "published"],
+      default: "draft",
     },
-    price: {
+
+    // ✅ NEW
+    views: {
       type: Number,
-      default: 0
-    }
+      default: 0,
+    },
   },
   { timestamps: true }
 );

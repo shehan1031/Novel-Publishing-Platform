@@ -1,0 +1,152 @@
+/* Container */
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #2b3ddd;
+}
+
+/* Section Headings */
+.dashboard-container h1 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.dashboard-container h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 0.5rem;
+}
+
+/* Points Section */
+.points-section {
+  background: #f0f8ff;
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Filter Section (Search + Sort) */
+.filter-section {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.sort-select {
+  flex: 0 0 200px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* Novels Grid */
+.novels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Keep your novel-card sizes intact */
+.novel-card {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Bookmark button inside card */
+.novel-card button {
+  margin-top: 0.5rem;
+}
+
+/* History Section */
+.history-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.history-section li {
+  background: #f9f9f9;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Continue Reading button */
+.continue-btn {
+  padding: 0.4rem 0.8rem;
+  background: #0077ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s ease;
+}
+
+.continue-btn:hover {
+  background: #005fcc;
+}
+
+/* Locked / badges for future */
+.chapter-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+.chapter-badge.new {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.chapter-badge.popular {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.chapter-badge.locked {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .filter-section {
+    flex-direction: column;
+  }
+
+  .sort-select {
+    flex: 1;
+  }
+}
