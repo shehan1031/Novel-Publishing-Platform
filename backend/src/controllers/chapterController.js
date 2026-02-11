@@ -2,12 +2,54 @@ const Chapter = require("../models/Chapter");
 const Novel = require("../models/Novel");
 const mongoose = require("mongoose");
 
-// Create chapter AND link to novel
+// =======================
+// GET CHAPTER BY ID
+// =======================
+exports.getChapterById = async (req, res) => {
+  try {
+    const { chapterId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(chapterId)) {
+      return res.status(400).json({ message: "Invalid chapter ID" });
+    }
+
+    const chapter = await Chapter.findById(chapterId).lean();
+    if (!chapter) {
+      return res.status(404).json({ message: "Chapter not found" });
+    }
+
+    res.json(chapter);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch chapter" });
+  }
+};
+
+// =======================
+// CREATE CHAPTER
+// =======================
 exports.createChapter = async (req, res) => {
   try {
-    const chapter = await Chapter.create(req.body);
+    const { novel, title, content, isPremium, releaseAt } = req.body;
 
-    await Novel.findByIdAndUpdate(chapter.novel, {
+    if (!novel || !title || !content) {
+      return res.status(400).json({ message: "Missing fields" });
+    }
+
+    const chapterCount = await Chapter.countDocuments({ novel });
+
+    const chapter = await Chapter.create({
+      novel,
+      author: req.user.id,
+      title,
+      content,
+      isPremium: !!isPremium,
+      releaseAt: releaseAt ? new Date(releaseAt) : null,
+      order: chapterCount,
+    });
+
+    // ✅ push chapter into novel
+    await Novel.findByIdAndUpdate(novel, {
       $push: { chapters: chapter._id },
     });
 
@@ -18,35 +60,29 @@ exports.createChapter = async (req, res) => {
   }
 };
 
-// Get chapters by novel
-exports.getChaptersByNovel = async (req, res) => {
+// =======================
+// UPDATE CHAPTER
+// =======================
+exports.updateChapter = async (req, res) => {
   try {
-    const chapters = await Chapter.find({ novel: req.params.novelId }).sort({
-      order: 1,
-    });
-    res.json(chapters);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to fetch chapters" });
-  }
-};
+    const { chapterId } = req.params;
+    const { title, content, isPremium, releaseAt } = req.body;
 
-// Get chapter by id (protected)
-exports.getChapterById = async (req, res) => {
-  const { id } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "Invalid chapter id" });
-  }
-
-  try {
-    const chapter = await Chapter.findById(id);
-    if (!chapter)
+    const chapter = await Chapter.findById(chapterId);
+    if (!chapter) {
       return res.status(404).json({ message: "Chapter not found" });
+    }
 
+    if (title !== undefined) chapter.title = title;
+    if (content !== undefined) chapter.content = content;
+    if (isPremium !== undefined) chapter.isPremium = isPremium;
+    if (releaseAt !== undefined)
+      chapter.releaseAt = releaseAt ? new Date(releaseAt) : null;
+
+    await chapter.save();
     res.json(chapter);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to fetch chapter" });
+    res.status(500).json({ message: "Failed to update chapter" });
   }
 };

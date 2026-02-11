@@ -1,52 +1,58 @@
-import axios from "axios";
+// src/services/novelService.js
+import API from "./api";
 
-// Axios instance with auth token
-const API = axios.create({
-  baseURL: "http://localhost:5000/api", // change if needed
-});
+// ====== NOVELS ======
 
-// Add auth token automatically
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); // your JWT
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// ===== NOVELS =====
-export const getNovelById = async (id) => {
-  const res = await API.get(`/novels/${id}`);
+// Get all published novels, optionally with query string
+export const getAllNovels = async (queryString = "") => {
+  const res = await API.get(`/novels${queryString}`);
   return res.data;
 };
 
-export const getAllNovels = async () => {
-  const res = await API.get("/novels");
-  return res.data;
-};
-
-export const getAuthorNovels = async () => {
-  const res = await API.get("/novels/author/me");
-  return res.data;
-};
-
-export const createNovel = async (data) => {
-  const res = await API.post("/novels", data, {
-    headers: { "Content-Type": "multipart/form-data" },
+// Get novels for the logged-in author
+export const getAuthorNovels = async (token) => {
+  if (!token) throw new Error("No token provided");
+  const res = await API.get("/novels/author/me", {
+    headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
 };
 
-// ===== CHAPTERS =====
-export const getChapterById = async (id) => {
-  const res = await API.get(`/chapters/${id}`);
+// Create a new novel
+export const createNovel = async (formData, token) => {
+  if (!token) throw new Error("No token provided");
+  const res = await API.post("/novels", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return res.data;
 };
 
-export const getChaptersByNovel = async (novelId) => {
-  const res = await API.get(`/chapters/novel/${novelId}`);
+// Update a novel
+export const updateNovel = async (novelId, formData, token) => {
+  if (!token) throw new Error("No token provided");
+  const res = await API.put(`/novels/${novelId}`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return res.data;
 };
 
-export const createChapter = async (data) => {
-  const res = await API.post("/chapters", data);
+// Get a single novel by ID
+export const getNovelById = async (novelId) => {
+  const res = await API.get(`/novels/${novelId}`);
+  return res.data;
+};
+
+// Delete a novel
+export const deleteNovel = async (novelId, token) => {
+  if (!token) throw new Error("No token provided");
+  const res = await API.delete(`/novels/${novelId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.data;
 };

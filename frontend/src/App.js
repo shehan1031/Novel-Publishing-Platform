@@ -18,7 +18,7 @@ import AuthorDashboard from "./pages/AuthorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
 // ===== AUTHOR PAGES =====
-import CreateNovel from "./pages/CreateNovel";
+import NovelEditor from "./pages/NovelEditor"; // unified create/edit page
 import ChapterEditor from "./pages/ChapterEditor";
 import AuthorAnalytics from "./pages/AuthorAnalytics";
 
@@ -39,22 +39,11 @@ function App() {
         {/* ================= PUBLIC ================= */}
         <Route path="/" element={<Home />} />
         <Route path="/browse" element={<Browse />} />
-
-        <Route
-          path="/login"
-          element={!user ? <Login /> : <Navigate to="/" replace />}
-        />
-        <Route
-          path="/signup"
-          element={!user ? <Signup /> : <Navigate to="/" replace />}
-        />
-
-        {/* ✅ PUBLIC NOVEL FLOW */}
         <Route path="/novel/:novelId" element={<NovelDetail />} />
-        <Route
-          path="/novel/:novelId/chapter/:chapterId"
-          element={<NovelReader />}
-        />
+        <Route path="/novel/:novelId/chapter/:chapterId" element={<NovelReader />} />
+
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
+        <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/" replace />} />
 
         {/* ================= READER ================= */}
         <Route
@@ -76,33 +65,35 @@ function App() {
           }
         />
 
+        {/* Create new novel */}
         <Route
           path="/author/novel/create"
           element={
             <ProtectedRoute roles={["author"]}>
-              <CreateNovel />
+              <NovelEditor />
             </ProtectedRoute>
           }
         />
 
+        {/* Edit existing novel */}
         <Route
-          path="/author/novel/:novelId"
+          path="/author/novel/:novelId/edit"
           element={
             <ProtectedRoute roles={["author"]}>
-              <NovelDetail />
+              <NovelEditor />
             </ProtectedRoute>
           }
         />
 
+        {/* Chapter editor */}
         <Route
-          path="/author/chapter/create"
+          path="/author/novel/:novelId/chapter/create"
           element={
             <ProtectedRoute roles={["author"]}>
               <ChapterEditor />
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/author/chapter/:chapterId"
           element={
@@ -112,6 +103,7 @@ function App() {
           }
         />
 
+        {/* Analytics */}
         <Route
           path="/author/analytics"
           element={
@@ -131,7 +123,7 @@ function App() {
           }
         />
 
-        {/* ================= FALLBACK ================= */}
+        {/* ================= CATCH-ALL ================= */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

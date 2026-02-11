@@ -1,9 +1,11 @@
 import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import useNovels from "../hooks/useNovels";
 import NovelCard from "../components/NovelCard";
 
 const Home = () => {
   const { novels, fetchNovels, loading } = useNovels();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchNovels();
@@ -20,7 +22,6 @@ const Home = () => {
           font-family: 'Segoe UI', sans-serif;
         }
 
-        /* ===== HERO ===== */
         .home-hero {
           max-width: 1200px;
           margin: auto;
@@ -92,7 +93,6 @@ const Home = () => {
           opacity: 0.95;
         }
 
-        /* ===== NOVELS GRID ===== */
         .novels-section {
           max-width: 1200px;
           margin: auto;
@@ -103,7 +103,6 @@ const Home = () => {
           font-weight: 700;
           margin-bottom: 25px;
           color: #38bdf8;
-          text-align: left;
           border-left: 4px solid #38bdf8;
           padding-left: 10px;
         }
@@ -114,15 +113,6 @@ const Home = () => {
           gap: 25px;
         }
 
-        .novels-grid .novel-card {
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .novels-grid .novel-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 15px 25px rgba(0,0,0,0.4);
-        }
-
         .loading,
         .empty {
           text-align: center;
@@ -131,7 +121,6 @@ const Home = () => {
           margin-top: 60px;
         }
 
-        /* Responsive tweaks */
         @media (max-width: 768px) {
           .home-hero h1 {
             font-size: 2.4rem;
@@ -149,18 +138,26 @@ const Home = () => {
       `}</style>
 
       <div className="home-container">
-        {/* ===== HERO ===== */}
+        {/* HERO */}
         <div className="home-hero">
-          <h1>NovelHub</h1>
+          <h1>Navella</h1>
           <p>Read • Bookmark • Track your progress</p>
 
           <div className="home-actions">
-            <button>Explore Novels</button>
-            <button className="secondary">Start Writing</button>
+            <button onClick={() => navigate("/browse")}>
+              Explore Novels
+            </button>
+
+            <button
+              className="secondary"
+              onClick={() => navigate("/login")}
+            >
+              Start Writing
+            </button>
           </div>
         </div>
 
-        {/* ===== NOVELS GRID SECTION ===== */}
+        {/* NOVELS GRID */}
         <div className="novels-section">
           <h2>Novels</h2>
 

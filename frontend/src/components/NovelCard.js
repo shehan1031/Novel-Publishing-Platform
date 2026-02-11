@@ -13,10 +13,15 @@ const NovelCard = ({ novel }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [bookmarked, setBookmarked] = useState(false);
 
-  // ✅ Full backend image URL
+  // Correct base URL
+  const baseUrl = (process.env.REACT_APP_API_URL || "http://localhost:5000").replace(
+    "/api",
+    ""
+  );
+
   const coverUrl =
     !imgError && novel.cover
-      ? `${process.env.REACT_APP_API_URL || "http://localhost:5000"}${novel.cover}`
+      ? `${baseUrl}${novel.cover}`
       : "/placeholder-cover.jpg";
 
   // Load bookmarks
@@ -33,7 +38,7 @@ const NovelCard = ({ novel }) => {
     fetchBookmarks();
   }, [novel._id]);
 
-  // Handle bookmark toggle
+  // Toggle bookmark
   const toggleBookmark = async () => {
     try {
       if (bookmarked) {
@@ -41,7 +46,6 @@ const NovelCard = ({ novel }) => {
       } else {
         await addBookmark(novel._id);
       }
-      // Refresh bookmarks
       const data = await getBookmarks();
       setBookmarks(data);
       setBookmarked(isBookmarked(data, novel._id));

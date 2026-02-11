@@ -3,37 +3,45 @@
   min-height: 100vh;
   display: flex;
   justify-content: center; /* horizontal center */
+  align-items: center;     /* vertical center */
   background: linear-gradient(135deg, #0f172a, #1e293b);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  padding: 60px 20px 40px 20px; /* top padding for navbar */
+  padding: 20px;
   box-sizing: border-box;
   position: relative;
 }
 
-/* Optional: floating form card shadow effect */
+/* Floating form card */
 .auth-form {
   width: 100%;
-  max-width: 450px;
+  max-width: 420px;
   background: #ffffff;
   padding: 50px 35px;
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-  text-align: center;
+  text-align: left; /* align text to left for SaaS feel */
   display: flex;
   flex-direction: column;
-  align-items: center;
   animation: fadeIn 0.6s ease-out;
   position: relative;
-  top: 40px; /* slight float below navbar */
 }
 
 /* Headings */
 .auth-form h2 {
   font-size: 2rem;
-  margin-bottom: 25px;
+  margin-bottom: 30px;
   color: #4f46e5;
   font-weight: 700;
   letter-spacing: 0.5px;
+  text-align: center; /* centered heading */
+}
+
+/* Labels */
+.auth-form label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #374151;
 }
 
 /* Inputs & Select */
@@ -41,25 +49,27 @@
 .auth-form select {
   width: 100%;
   padding: 14px 16px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   font-size: 1rem;
   transition: all 0.3s ease;
+  background: #f9fafb;
 }
 
 .auth-form input:focus,
 .auth-form select:focus {
   outline: none;
   border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  background: #fff;
 }
 
 /* Buttons */
 .auth-form button {
   width: 100%;
   padding: 14px;
-  margin-top: 5px;
+  margin-top: 10px;
   border: none;
   border-radius: 10px;
   background: #4f46e5;
@@ -81,9 +91,9 @@
   transform: none;
 }
 
-/* Footer Links */
+/* Optional: forgot password / links */
 .auth-footer {
-  margin-top: 20px;
+  margin-top: 25px;
   font-size: 0.95rem;
   color: #6b7280;
   text-align: center;
@@ -100,9 +110,33 @@
   text-decoration: underline;
 }
 
+/* Optional: divider with "or" */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.auth-divider:not(:empty)::before {
+  margin-right: .75em;
+}
+
+.auth-divider:not(:empty)::after {
+  margin-left: .75em;
+  margin-right: .75em;
+}
+
 /* Animation */
 @keyframes fadeIn {
-  0% { opacity: 0; transform: translateY(-10px); }
+  0% { opacity: 0; transform: translateY(-15px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 

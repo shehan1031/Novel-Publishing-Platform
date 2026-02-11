@@ -6,7 +6,7 @@ const ChapterList = ({ chapters }) => {
     <ul className="chapter-list">
       {chapters.map((chapter) => (
         <li key={chapter._id}>
-          {chapter.title}
+          {chapter.translations?.en?.title || "Untitled Chapter"}
         </li>
       ))}
     </ul>

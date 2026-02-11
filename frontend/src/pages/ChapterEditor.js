@@ -1,187 +1,116 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { createChapter, getChapterById, updateChapter } from "../services/chapterService";
+// src/pages/ChapterEditor.js
+import React, { useState, useEffect, useContext } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { getChapterById, createChapter, updateChapter } from "../services/chapterService";
+import { AuthContext } from "../context/AuthContext";
 import "../styles/chapterEditor.css";
 
-const FONT_SIZES = ["12px", "14px", "16px", "18px", "20px", "24px", "28px"];
-const FONT_FAMILIES = ["Arial", "Georgia", "Tahoma", "Times New Roman", "Verdana"];
-
-const ChapterEditor = () => {
-  const { chapterId } = useParams();
-  const [searchParams] = useSearchParams();
-  const novelId = searchParams.get("novel");
+const AuthorChapterEditor = () => {
+  const { novelId, chapterId } = useParams();
   const navigate = useNavigate();
+  const { token } = useContext(AuthContext);
 
-  const editorRef = useRef(null);
   const [title, setTitle] = useState("");
-  const [activeFormats, setActiveFormats] = useState({});
-  const [fontSize, setFontSize] = useState("16px");
-  const [fontFamily, setFontFamily] = useState("Arial");
+  const [content, setContent] = useState("");
+  const [isPremium, setIsPremium] = useState(false);
+  const [releaseAt, setReleaseAt] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Load chapter if editing
+  // Load chapter data if editing
   useEffect(() => {
-    if (chapterId) {
-      const fetchChapter = async () => {
-        const data = await getChapterById(chapterId);
-        setTitle(data.title);
-        editorRef.current.innerHTML = data.content;
-      };
-      fetchChapter();
-    }
-  }, [chapterId]);
+    if (!chapterId) return;
+    if (!token) return alert("You must be logged in to edit a chapter");
 
-  // Execute formatting command
-  const execCommand = (command, value = null) => {
-    document.execCommand(command, false, value);
-    updateActiveFormats();
-    editorRef.current.focus();
-  };
+    setLoading(true);
+    getChapterById(chapterId, token)
+      .then((ch) => {
+        setTitle(ch.title || "");
+        setContent(ch.content || "");
+        setIsPremium(ch.isPremium || false);
+        setReleaseAt(ch.releaseAt ? new Date(ch.releaseAt).toISOString().slice(0, 16) : "");
+      })
+      .catch(() => alert("Failed to load chapter"))
+      .finally(() => setLoading(false));
+  }, [chapterId, token]);
 
-  // Update toolbar highlighting
-  const updateActiveFormats = () => {
-    const formats = {
-      bold: document.queryCommandState("bold"),
-      italic: document.queryCommandState("italic"),
-      underline: document.queryCommandState("underline"),
-      strikeThrough: document.queryCommandState("strikeThrough"),
-      orderedList: document.queryCommandState("insertOrderedList"),
-      unorderedList: document.queryCommandState("insertUnorderedList"),
-      blockquote: document.queryCommandValue("formatBlock") === "blockquote",
-    };
-    setActiveFormats(formats);
-  };
-
-  // Apply font-size safely
-  const applyFontSize = (size) => {
-    setFontSize(size);
-    document.execCommand("fontSize", false, "7"); // Use size 7 as dummy
-    const fontElements = editorRef.current.querySelectorAll("font[size='7']");
-    fontElements.forEach((el) => {
-      el.removeAttribute("size");
-      el.style.fontSize = size;
-    });
-    updateActiveFormats();
-    editorRef.current.focus();
-  };
-
-  // Apply font-family
-  const applyFontFamily = (family) => {
-    setFontFamily(family);
-    document.execCommand("fontName", false, family);
-    updateActiveFormats();
-    editorRef.current.focus();
-  };
-
-  const handleSubmit = async (e) => {
+  // Save chapter
+  const handleSave = async (e) => {
     e.preventDefault();
+    if (!token) return alert("You must be logged in to save a chapter");
+
+    const payload = {
+      novel: novelId,
+      title,
+      content,
+      isPremium,
+      releaseAt: releaseAt ? new Date(releaseAt) : null,
+    };
+
+    setLoading(true);
     try {
-      const chapterData = {
-        title,
-        content: editorRef.current.innerHTML,
-      };
       if (chapterId) {
-        await updateChapter(chapterId, chapterData);
+        await updateChapter(chapterId, payload, token);
       } else {
-        await createChapter({ novel: novelId, ...chapterData });
+        await createChapter(payload, token);
       }
+      alert("Chapter saved successfully!");
       navigate(`/author/novel/${novelId}`);
     } catch (err) {
-      console.error("Failed to save chapter:", err);
+      console.error(err.response?.data || err.message);
+      alert("Failed to save chapter");
+    } finally {
+      setLoading(false);
     }
   };
 
+  if (loading) return <p style={{ padding: "40px", textAlign: "center" }}>Loading...</p>;
+
   return (
-    <div className="chapter-editor-container">
+    <div className="chapter-editor">
       <h2>{chapterId ? "Edit Chapter" : "New Chapter"}</h2>
 
-      <input
-        type="text"
-        placeholder="Chapter Title"
-        className="chapter-title-input"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
+      <form onSubmit={handleSave}>
+        <input
+          type="text"
+          placeholder="Chapter Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
 
-      <div className="editor-toolbar">
-        <button
-          className={activeFormats.bold ? "active" : ""}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => execCommand("bold")}
-        >
-          B
-        </button>
-        <button
-          className={activeFormats.italic ? "active" : ""}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => execCommand("italic")}
-        >
-          I
-        </button>
-        <button
-          className={activeFormats.underline ? "active" : ""}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => execCommand("underline")}
-        >
-          U
-        </button>
-        <button
-          className={activeFormats.orderedList ? "active" : ""}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => execCommand("insertOrderedList")}
-        >
-          OL
-        </button>
-        <button
-          className={activeFormats.unorderedList ? "active" : ""}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => execCommand("insertUnorderedList")}
-        >
-          UL
-        </button>
-        <button
-          className={activeFormats.blockquote ? "active" : ""}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => execCommand("formatBlock", "BLOCKQUOTE")}
-        >
-          ❝
-        </button>
-        <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCommand("undo")}>
-          ↺
-        </button>
-        <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCommand("redo")}>
-          ↻
-        </button>
+        <textarea
+          placeholder="Chapter Content"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          rows={15}
+          required
+        />
 
-        <select value={fontSize} onChange={(e) => applyFontSize(e.target.value)}>
-          {FONT_SIZES.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={isPremium}
+            onChange={(e) => setIsPremium(e.target.checked)}
+          />
+          Premium Chapter
+        </label>
 
-        <select value={fontFamily} onChange={(e) => applyFontFamily(e.target.value)}>
-          {FONT_FAMILIES.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
-      </div>
+        <label>
+          Scheduled Release:
+          <input
+            type="datetime-local"
+            value={releaseAt}
+            onChange={(e) => setReleaseAt(e.target.value)}
+          />
+        </label>
 
-      <div
-        ref={editorRef}
-        className="editor-area"
-        contentEditable
-        onKeyUp={updateActiveFormats}
-        onMouseUp={updateActiveFormats}
-      />
-
-      <button className="submit-chapter-btn" onClick={handleSubmit}>
-        {chapterId ? "Update Chapter" : "Create Chapter"}
-      </button>
+        <button type="submit" disabled={loading}>
+          {chapterId ? "Update Chapter" : "Create Chapter"}
+        </button>
+      </form>
     </div>
   );
 };
 
-export default ChapterEditor;
+export default AuthorChapterEditor;
+

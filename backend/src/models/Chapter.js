@@ -2,28 +2,24 @@ const mongoose = require("mongoose");
 
 const chapterSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    content: { type: String, default: "" },
-    order: { type: Number, default: 1 },
-
     novel: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Novel",
       required: true,
     },
-
-    // ✅ NEW
-    status: {
-      type: String,
-      enum: ["draft", "published"],
-      default: "draft",
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
 
-    // ✅ NEW
-    views: {
-      type: Number,
-      default: 0,
-    },
+    // ✅ SIMPLE FIELDS
+    title: { type: String, required: true },
+    content: { type: String, required: true },
+
+    isPremium: { type: Boolean, default: false },
+    releaseAt: { type: Date, default: null },
+    order: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

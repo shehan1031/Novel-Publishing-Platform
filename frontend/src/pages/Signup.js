@@ -33,34 +33,36 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-form">
-      <h2>Sign Up</h2>
-      {error && <div className="auth-error">{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="reader">Reader</option>
-          <option value="author">Author</option>
-        </select>
-        <button type="submit" disabled={loading}>
-          {loading ? "Signing up..." : "Sign Up"}
-        </button>
-      </form>
-      <div className="auth-footer">
-        Already have an account? <a href="/login">Login</a>
+    <div className="auth-page"> {/* <-- Wrap form in full-page container */}
+      <div className="auth-form">
+        <h2>Sign Up</h2>
+        {error && <div className="auth-error">{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="reader">Reader</option>
+            <option value="author">Author</option>
+          </select>
+          <button type="submit" disabled={loading}>
+            {loading ? "Signing up..." : "Sign Up"}
+          </button>
+        </form>
+        <div className="auth-footer">
+          Already have an account? <a href="/login">Login</a>
+        </div>
       </div>
     </div>
   );

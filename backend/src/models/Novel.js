@@ -2,22 +2,17 @@ const mongoose = require("mongoose");
 
 const novelSchema = new mongoose.Schema(
   {
-    title: { type: String, default: "Untitled" },
-    description: { type: String, default: "" },
+    title: { type: String, required: true },
+    description: String,
+    cover: String,
     genre: String,
     language: String,
-    cover: { type: String }, // URL to cover image
-    author: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    status: {
-      type: String,
-      enum: ["draft", "published"],
-      default: "draft",
-    },
+    status: { type: String, default: "draft" },
+    author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     chapters: [{ type: mongoose.Schema.Types.ObjectId, ref: "Chapter" }],
+
+    // ✅ Track views
+    views: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

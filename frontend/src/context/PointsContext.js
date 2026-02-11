@@ -1,43 +1,43 @@
 import React, { createContext, useState, useEffect } from "react";
-import { purchasePoints, deductPoints, getPoints } from "../services/pointsService";
+import {
+  getPoints,
+  purchasePoints,
+  deductPoints,
+  getSubscriptionStatus,
+} from "../services/pointsService";
 
 export const PointsContext = createContext();
 
 export const PointsProvider = ({ children }) => {
   const [points, setPoints] = useState(0);
+  const [subscription, setSubscription] = useState({ active: false });
+  const [loading, setLoading] = useState(true);
 
-  // Fetch current points for the logged-in user
   const fetchPoints = async () => {
     try {
-      const data = await getPoints();
-      setPoints(data.points);
+      setLoading(true);
+      const pointsData = await getPoints();
+      setPoints(pointsData.points || 0);
+
+      const subData = await getSubscriptionStatus();
+      setSubscription(subData);
     } catch (err) {
-      console.error("Failed to fetch points:", err);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Purchase points
   const addPoints = async (amount) => {
-    try {
-      const data = await purchasePoints(amount);
-      setPoints(data.points);
-      return data.points;
-    } catch (err) {
-      console.error("Failed to purchase points:", err);
-      throw err;
-    }
+    const data = await purchasePoints(amount);
+    setPoints(data.points);
+    return data.points;
   };
 
-  // Deduct points
   const removePoints = async (amount) => {
-    try {
-      const data = await deductPoints(amount);
-      setPoints(data.points);
-      return data.points;
-    } catch (err) {
-      console.error("Failed to deduct points:", err);
-      throw err;
-    }
+    const data = await deductPoints(amount);
+    setPoints(data.points);
+    return data.points;
   };
 
   useEffect(() => {
@@ -45,7 +45,9 @@ export const PointsProvider = ({ children }) => {
   }, []);
 
   return (
-    <PointsContext.Provider value={{ points, fetchPoints, addPoints, removePoints }}>
+    <PointsContext.Provider
+      value={{ points, subscription, fetchPoints, addPoints, removePoints, loading }}
+    >
       {children}
     </PointsContext.Provider>
   );

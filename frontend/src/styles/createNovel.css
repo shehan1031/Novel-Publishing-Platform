@@ -1,0 +1,32 @@
+.create-novel-page {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.create-novel-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.create-novel-form input,
+.create-novel-form textarea,
+.create-novel-form select {
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.create-novel-form button {
+  padding: 12px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.create-novel-form button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}

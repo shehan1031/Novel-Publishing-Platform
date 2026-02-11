@@ -16,12 +16,12 @@ const Browse = () => {
     const fetchNovels = async () => {
       setLoading(true);
       try {
-        let query = [];
-        if (search) query.push(`search=${encodeURIComponent(search)}`);
-        if (genre) query.push(`genre=${encodeURIComponent(genre)}`);
-        if (language) query.push(`language=${encodeURIComponent(language)}`);
-        const queryString = query.length ? `?${query.join("&")}` : "";
+        const params = new URLSearchParams();
+        if (search) params.append("search", search);
+        if (genre) params.append("genre", genre);
+        if (language) params.append("language", language);
 
+        const queryString = params.toString() ? `?${params.toString()}` : "";
         const data = await getAllNovels(queryString);
         setNovels(data);
       } catch (err) {
@@ -56,15 +56,11 @@ const Browse = () => {
             <option value="Horror">Horror</option>
           </select>
 
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-          >
+          <select value={language} onChange={(e) => setLanguage(e.target.value)}>
             <option value="">All Languages</option>
             <option value="English">English</option>
-            <option value="Spanish">Spanish</option>
-            <option value="Japanese">Japanese</option>
-            <option value="Chinese">Chinese</option>
+            <option value="Tamil">Tamil</option>
+            <option value="Sinhala">Sinhala</option>
           </select>
         </div>
       </div>

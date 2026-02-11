@@ -1,137 +1,150 @@
-import React, { useEffect, useContext, useState } from "react";
-import useNovels from "../hooks/useNovels";
+import React, { useEffect, useState, useContext } from "react";
 import { PointsContext } from "../context/PointsContext";
 import { ProgressContext } from "../context/ProgressContext";
+import { NovelContext } from "../context/NovelContext";
 import BookmarkButton from "../components/BookmarkButton";
 import "../styles/readerDashboard.css";
 
 const ReaderDashboard = () => {
-  const { novels, fetchNovels } = useNovels();
-  const { points, getPoints } = useContext(PointsContext);
+  const { novels, fetchNovels } = useContext(NovelContext);
+  const { points, fetchPoints } = useContext(PointsContext);
   const { readingHistory, fetchReadingHistory } = useContext(ProgressContext);
 
+  const [bookmarks, setBookmarks] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useState("newest");
-  const [filteredNovels, setFilteredNovels] = useState([]);
 
-  // Load dashboard data once
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
         await fetchNovels();
-        await getPoints();
+        await fetchPoints();
         await fetchReadingHistory();
+
+        // Demo bookmarks & recently viewed (replace with real API if available)
+        setBookmarks(novels.slice(0, 3));
+        setRecentlyViewed(novels.slice(-3));
       } catch (err) {
-        console.error("Failed to load dashboard data:", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    loadDashboardData();
-  }, []);
+    loadData();
+  }, []); // ✅ fixed dependency to avoid infinite loop
 
-  // Filter and sort novels when novels, searchTerm, or sortOption changes
-  useEffect(() => {
-    let data = [...novels];
+  const filteredNovels = novels.filter((n) =>
+    n.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    // Filter
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      data = data.filter(
-        (n) =>
-          n.title.toLowerCase().includes(term) ||
-          n.author?.email?.toLowerCase().includes(term)
-      );
-    }
-
-    // Sort
-    if (sortOption === "newest") {
-      data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    } else if (sortOption === "popular") {
-      data.sort((a, b) => (b.chapters?.length || 0) - (a.chapters?.length || 0));
-    } else if (sortOption === "points") {
-      data.sort((a, b) => (b.points || 0) - (a.points || 0));
-    }
-
-    setFilteredNovels(data);
-  }, [novels, searchTerm, sortOption]);
-
-  if (loading) return <p>Loading...</p>;
+  if (loading)
+    return <p style={{ textAlign: "center", padding: "40px" }}>Loading...</p>;
 
   return (
-    <div className="dashboard-container">
-      <h1>Reader Dashboard</h1>
-
-      {/* Points Section */}
-      <section className="points-section">
-        <h2>Your Points: {points}</h2>
-      </section>
-
-      {/* Search & Sort */}
-      <section className="filter-section">
+    <div className="dashboard-wrapper">
+      {/* Sidebar */}
+      <aside className="dashboard-sidebar">
         <input
           type="text"
-          placeholder="Search novels..."
+          placeholder="Search Novels..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
+          className="sidebar-search"
         />
-        <select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value)}
-          className="sort-select"
-        >
-          <option value="newest">Newest</option>
-          <option value="popular">Most Popular</option>
-          <option value="points">By Points</option>
-        </select>
-      </section>
+        <ul className="sidebar-menu">
+          <li>My Library</li>
+          <li>Bookmarks</li>
+          <li>Following</li>
+          <li>History</li>
+        </ul>
+      </aside>
 
-      {/* All Novels Section */}
-      <section className="novels-section">
-        <h2>All Novels</h2>
-        {filteredNovels.length === 0 ? (
-          <p>No novels found.</p>
-        ) : (
-          <div className="novels-grid">
-            {filteredNovels.map((novel) => (
-              <div key={novel._id} className="novel-card">
-                <h3>{novel.title}</h3>
-                <p>By: {novel.author?.email || "Unknown"}</p>
-                <BookmarkButton novelId={novel._id} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Main Content */}
+      <main className="dashboard-main">
+        {/* Wallet / Points */}
+        <div className="points-card">
+          <h2>Wallet / Coin Balance: {points} 🪙</h2>
+        </div>
 
-      {/* Reading History Section */}
-      <section className="history-section">
-        <h2>Your Reading History</h2>
-        {readingHistory.length === 0 ? (
-          <p>No reading history yet.</p>
-        ) : (
-          <ul>
-            {readingHistory.map((record) => (
-              <li key={record._id}>
-                <strong>Novel:</strong> {record.chapter.novel.title} -{" "}
-                <strong>Chapter:</strong> {record.chapter.title} -{" "}
-                <strong>Progress:</strong> {record.progress}%
-                <button
-                  className="continue-btn"
-                  onClick={() =>
-                    (window.location.href = `/novel/${record.chapter.novel._id}/chapter/${record.chapter._id}`)
-                  }
-                >
-                  Continue Reading
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        {/* Reading History */}
+        <section className="section-card">
+          <h3>Reading History</h3>
+          {readingHistory.length === 0 ? (
+            <p>No reading history yet.</p>
+          ) : (
+            <ul className="reading-history-list">
+              {readingHistory.map((r) => (
+                <li key={r._id}>
+                  <div className="chapter-info">
+                    {r.chapter.novel.title} - Chapter {r.chapter.title}
+                    <button
+                      onClick={() =>
+                        (window.location.href = `/novel/${r.chapter.novel._id}/chapter/${r.chapter._id}`)
+                      }
+                    >
+                      Resume
+                    </button>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="progress-bar-wrapper">
+                    <div
+                      className="progress-bar"
+                      style={{ width: `${r.progress || 0}%` }}
+                    ></div>
+                    <span className="progress-text">{r.progress || 0}%</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Bookmarked Novels */}
+        <section className="section-card">
+          <h3>Bookmarked Novels</h3>
+          {bookmarks.length === 0 ? (
+            <p>No bookmarks yet.</p>
+          ) : (
+            <ul>
+              {bookmarks.map((b) => (
+                <li key={b._id}>
+                  {b.title}{" "}
+                  <button onClick={() => (window.location.href = `/novel/${b._id}`)}>
+                    Read
+                  </button>{" "}
+                  <BookmarkButton novelId={b._id} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Recently Viewed */}
+        <section className="section-card">
+          <h3>Recently Viewed Novels</h3>
+          {recentlyViewed.length === 0 ? (
+            <p>No recently viewed novels.</p>
+          ) : (
+            <ul>
+              {recentlyViewed.map((n) => (
+                <li key={n._id}>
+                  {n.title}{" "}
+                  <button onClick={() => (window.location.href = `/novel/${n._id}`)}>
+                    Read Again
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="dashboard-footer">
+        <p>About | Terms | Privacy | Help</p>
+      </footer>
     </div>
   );
 };

@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
+    "@tiptap/react": "^3.19.0",
+    "@tiptap/starter-kit": "^3.19.0",
+    "react-beautiful-dnd": "^13.1.1"
+  }
+}

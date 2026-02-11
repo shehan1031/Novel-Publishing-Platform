@@ -1,0 +1,90 @@
+/* ====== Novel Editor Page ====== */
+.novel-editor-page {
+  max-width: 700px;
+  margin: 50px auto;
+  padding: 40px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #1e1e2f;
+}
+
+.novel-editor-page h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  text-align: center;
+  color: #111827;
+}
+
+.novel-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.novel-editor-form input[type="text"],
+.novel-editor-form textarea,
+.novel-editor-form select,
+.novel-editor-form input[type="datetime-local"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 15px;
+  color: #111827;
+  background-color: #f9fafb;
+  transition: all 0.2s ease;
+}
+
+.novel-editor-form input:focus,
+.novel-editor-form textarea:focus,
+.novel-editor-form select:focus,
+.novel-editor-form input[type="datetime-local"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  background-color: #fff;
+}
+
+.novel-editor-form .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #1e1e2f;
+}
+
+.novel-editor-form button {
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.novel-editor-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Save / Update Button */
+.novel-editor-form button[type="submit"] {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+.novel-editor-form button[type="submit"]:hover:not(:disabled) {
+  background-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .novel-editor-page {
+    padding: 30px 20px;
+  }
+}

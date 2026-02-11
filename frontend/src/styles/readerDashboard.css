@@ -1,152 +1,198 @@
-/* Container */
-.dashboard-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  color: #2b3ddd;
-}
-
-/* Section Headings */
-.dashboard-container h1 {
-  font-size: 2rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.dashboard-container h2 {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-  border-bottom: 2px solid #ccc;
-  padding-bottom: 0.5rem;
-}
-
-/* Points Section */
-.points-section {
-  background: #f0f8ff;
-  padding: 1rem 1.5rem;
-  border-radius: 10px;
-  margin-bottom: 2rem;
-  text-align: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Filter Section (Search + Sort) */
-.filter-section {
+/* ===== Reset / Base Styles ===== */
+.dashboard-wrapper {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-  flex-wrap: wrap;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f7f9fc;
+  color: #333;
 }
 
-.search-input {
-  flex: 1;
-  min-width: 200px;
-  padding: 0.5rem 1rem;
-  border: 1px solid #aaa;
-  border-radius: 8px;
-  font-size: 1rem;
-}
-
-.sort-select {
-  flex: 0 0 200px;
-  padding: 0.5rem 1rem;
-  border: 1px solid #aaa;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: #fff;
-  cursor: pointer;
-}
-
-/* Novels Grid */
-.novels-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1.5rem;
-}
-
-/* Keep your novel-card sizes intact */
-.novel-card {
-  background: #fff;
-  padding: 1rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+.dashboard-sidebar {
+  width: 250px;
+  background: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  padding: 20px;
+  box-shadow: 2px 0 6px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
 }
 
-/* Bookmark button inside card */
-.novel-card button {
-  margin-top: 0.5rem;
+.sidebar-search {
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 14px;
 }
 
-/* History Section */
-.history-section ul {
+.sidebar-menu {
   list-style: none;
   padding: 0;
 }
 
-.history-section li {
-  background: #f9f9f9;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  border-radius: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+.sidebar-menu li {
+  margin-bottom: 15px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #555;
+  transition: 0.2s;
 }
 
-/* Continue Reading button */
-.continue-btn {
-  padding: 0.4rem 0.8rem;
-  background: #0077ff;
+.sidebar-menu li:hover {
+  color: #1e90ff;
+}
+
+/* ===== Main Content ===== */
+.dashboard-main {
+  flex: 1;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.section-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  padding: 20px;
+  transition: 0.3s;
+}
+
+.section-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+
+.points-card {
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+/* ===== Reading History List ===== */
+.reading-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.reading-history-list li {
+  margin-bottom: 15px;
+}
+
+.chapter-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.chapter-info button {
+  background: #1e90ff;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.3s ease;
+  font-size: 13px;
+  transition: 0.2s;
 }
 
-.continue-btn:hover {
-  background: #005fcc;
+.chapter-info button:hover {
+  background: #2575fc;
 }
 
-/* Locked / badges for future */
-.chapter-badge {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  margin-left: 0.5rem;
+/* ===== Progress Bar ===== */
+.progress-bar-wrapper {
+  position: relative;
+  height: 20px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.chapter-badge.new {
-  background-color: #28a745;
+.progress-bar {
+  height: 100%;
+  background: #1e90ff;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  right: 10px;
+  top: 0;
+  font-size: 12px;
+  line-height: 20px;
   color: #fff;
+  font-weight: 500;
 }
 
-.chapter-badge.popular {
-  background-color: #ffc107;
-  color: #000;
+/* ===== Bookmarks & Recently Viewed ===== */
+.section-card ul {
+  list-style: none;
+  padding: 0;
 }
 
-.chapter-badge.locked {
-  background-color: #dc3545;
+.section-card li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-card li button {
+  background: #4caf50;
   color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .filter-section {
+.section-card li button:hover {
+  background: #45a049;
+}
+
+/* ===== Footer ===== */
+.dashboard-footer {
+  text-align: center;
+  padding: 15px;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  margin-top: auto;
+  font-size: 14px;
+  color: #777;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .dashboard-wrapper {
     flex-direction: column;
   }
 
-  .sort-select {
-    flex: 1;
+  .dashboard-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .sidebar-menu {
+    display: flex;
+    gap: 15px;
+  }
+
+  .dashboard-main {
+    padding: 15px;
   }
 }

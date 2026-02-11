@@ -4,34 +4,28 @@ const auth = require("../middleware/authMiddleware");
 const role = require("../middleware/roleMiddleware");
 const multer = require("multer");
 const path = require("path");
-
 const {
   createNovel,
   getAllNovels,
   getNovelById,
   getAuthorNovels,
+  incrementView,
 } = require("../controllers/novelController");
 
-// ===== Multer setup =====
+// Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) =>
-    cb(null, Date.now() + path.extname(file.originalname)),
+  filename: (req, file, cb) => cb(null, `${Date.now()}${path.extname(file.originalname)}`),
 });
 const upload = multer({ storage });
 
-// ===== ROUTES =====
-
-// 1️⃣ Author novels first (prevent route conflicts)
+// Routes
 router.get("/author/me", auth, role(["author"]), getAuthorNovels);
-
-// 2️⃣ All published novels
 router.get("/", getAllNovels);
-
-// 3️⃣ Single novel by ID
-router.get("/:id", getNovelById);
-
-// 4️⃣ Create new novel
+router.get("/:novelId", getNovelById);
 router.post("/", auth, role(["author"]), upload.single("cover"), createNovel);
+
+// ✅ Increment views
+router.post("/:novelId/increment-view", incrementView);
 
 module.exports = router;
