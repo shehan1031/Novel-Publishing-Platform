@@ -3,11 +3,11 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider }     from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
-import { NovelProvider } from "./context/NovelContext";
-import { PointsProvider } from "./context/PointsContext";
-import { ProgressProvider } from "./context/ProgressContext"; // ✅ added
+import { NovelProvider }    from "./context/NovelContext";
+import { PointsProvider }   from "./context/PointsContext";
+import { ProgressProvider } from "./context/ProgressContext";
 
 import "./styles/global.css";
 
@@ -18,7 +18,7 @@ root.render(
       <LanguageProvider>
         <NovelProvider>
           <PointsProvider>
-            <ProgressProvider> {/* Wrap ProgressProvider */}
+            <ProgressProvider>
               <BrowserRouter>
                 <App />
               </BrowserRouter>

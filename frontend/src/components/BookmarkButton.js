@@ -1,30 +1,45 @@
 import React, { useState, useEffect } from "react";
-import { addBookmark, removeBookmark, isBookmarked } from "../services/bookmarkService";
+import {
+  addBookmark,
+  removeBookmark,
+  checkBookmark,
+} from "../services/bookmarkService";
 
-const BookmarkButton = ({ novelId }) => {
+const BookmarkButton = ({ novelId, onToggle }) => {
   const [bookmarked, setBookmarked] = useState(false);
+  const [loading,    setLoading]    = useState(false);
 
   useEffect(() => {
-    const check = async () => {
-      const status = await isBookmarked(novelId);
-      setBookmarked(status);
-    };
-    check();
+    if (!novelId) return;
+    checkBookmark(novelId).then(status => setBookmarked(status));
   }, [novelId]);
 
   const toggleBookmark = async () => {
-    if (bookmarked) {
-      await removeBookmark(novelId);
-      setBookmarked(false);
-    } else {
-      await addBookmark(novelId);
-      setBookmarked(true);
+    if (loading) return;
+    setLoading(true);
+    try {
+      if (bookmarked) {
+        await removeBookmark(novelId);
+        setBookmarked(false);
+      } else {
+        await addBookmark(novelId);
+        setBookmarked(true);
+      }
+      onToggle?.();
+    } catch (err) {
+      console.error("Bookmark toggle failed:", err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <button onClick={toggleBookmark}>
-      {bookmarked ? "Remove Bookmark" : "Bookmark"}
+    <button
+      onClick={toggleBookmark}
+      disabled={loading}
+      style={{ opacity: loading ? 0.6 : 1 }}
+    >
+      {loading ? "..." : bookmarked ? "Remove Bookmark" : "Bookmark"}
     </button>
   );
 };

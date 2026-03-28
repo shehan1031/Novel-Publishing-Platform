@@ -1,88 +1,78 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { AuthContext } from "./AuthContext";
-import {
-  getAllNovels,
-  getAuthorNovels,
-  createNovel as createNovelService,
-} from "../services/novelService";
+import API from "../services/api";
 
 export const NovelContext = createContext();
 
 export const NovelProvider = ({ children }) => {
-  const { token } = useContext(AuthContext); // ✅ get token from AuthContext
-  const [novels, setNovels] = useState([]);
+  const { user } = useContext(AuthContext);
+
+  const [novels,  setNovels]  = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch all public novels
-  const fetchNovels = async () => {
+  // ✅ Public novels — published only, no auth needed
+  const fetchNovels = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getAllNovels();
-      setNovels(data);
+      const res = await API.get("/novels");
+      setNovels(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("Failed to fetch public novels:", err.response?.data || err.message);
+      console.warn("fetchNovels failed:", err.message);
+      setNovels([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Fetch novels for the logged-in author
-  const fetchAuthorNovels = async () => {
-    if (!token) {
-      console.warn("No token found. Skipping author novels fetch.");
-      return;
-    }
+  // ✅ Author's own novels — all statuses, auth required
+  const fetchAuthorNovels = useCallback(async () => {
+    if (!localStorage.getItem("token")) return;
     setLoading(true);
     try {
-      const data = await getAuthorNovels(token);
-      setNovels(data);
+      const res = await API.get("/author/novels"); // ✅ correct endpoint
+      setNovels(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("Failed to fetch author novels:", err.response?.data || err.message);
+      console.warn("fetchAuthorNovels failed:", err.message);
+      setNovels([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Create a new novel for the logged-in author
-  const createNovel = async (formData) => {
-    if (!token) {
-      console.error("No token found. Cannot create novel.");
-      throw new Error("Not authenticated");
-    }
+  const createNovel = useCallback(async (formData) => {
+    if (!localStorage.getItem("token")) throw new Error("Not authenticated");
     setLoading(true);
     try {
-      const created = await createNovelService(formData, token);
-      // Prepend newly created novel to the list
-      setNovels((prev) => [created, ...prev]);
-      return created;
+      const res = await API.post("/novels", formData);
+      setNovels(prev => [res.data, ...prev]);
+      return res.data;
     } catch (err) {
-      console.error("Failed to create novel:", err.response?.data || err.message);
+      console.error("createNovel failed:", err.message);
       throw err;
     } finally {
       setLoading(false);
     }
-  };
-
-  // Automatically fetch public novels on mount
-  useEffect(() => {
-    fetchNovels();
   }, []);
 
+  // ✅ On mount: always load public novels only
+  // fetchAuthorNovels is called explicitly from AuthorDashboard only
+  useEffect(() => {
+    fetchNovels();
+  }, [fetchNovels]);
+
   return (
-    <NovelContext.Provider
-      value={{
-        novels,
-        loading,
-        fetchNovels,
-        fetchAuthorNovels,
-        createNovel,
-        setNovels,
-      }}
-    >
+    <NovelContext.Provider value={{
+      novels,
+      loading,
+      fetchNovels,
+      fetchAuthorNovels,
+      createNovel,
+      setNovels,
+    }}>
       {children}
     </NovelContext.Provider>
   );
 };
 
-// Optional helper hook
 export const useNovels = () => useContext(NovelContext);
+export default useNovels;

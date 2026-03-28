@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
+import { AuthContext } from "./AuthContext";
 import {
   getPoints,
   purchasePoints,
@@ -9,20 +10,24 @@ import {
 export const PointsContext = createContext();
 
 export const PointsProvider = ({ children }) => {
-  const [points, setPoints] = useState(0);
+  // ✅ token is separate state in your AuthContext — not inside user
+  const { user, token } = useContext(AuthContext);
+
+  const [points,       setPoints]       = useState(0);
   const [subscription, setSubscription] = useState({ active: false });
-  const [loading, setLoading] = useState(true);
+  const [loading,      setLoading]      = useState(true);
 
   const fetchPoints = async () => {
     try {
       setLoading(true);
       const pointsData = await getPoints();
-      setPoints(pointsData.points || 0);
+      // ✅ backend returns { balance } not { points }
+      setPoints(pointsData.balance ?? pointsData.points ?? 0);
 
       const subData = await getSubscriptionStatus();
       setSubscription(subData);
     } catch (err) {
-      console.error(err);
+      console.error("fetchPoints error:", err);
     } finally {
       setLoading(false);
     }
@@ -30,19 +35,27 @@ export const PointsProvider = ({ children }) => {
 
   const addPoints = async (amount) => {
     const data = await purchasePoints(amount);
-    setPoints(data.points);
-    return data.points;
+    const newBalance = data.balance ?? data.points ?? 0;
+    setPoints(newBalance);
+    return newBalance;
   };
 
   const removePoints = async (amount) => {
     const data = await deductPoints(amount);
-    setPoints(data.points);
-    return data.points;
+    const newBalance = data.balance ?? data.points ?? 0;
+    setPoints(newBalance);
+    return newBalance;
   };
 
+  // ✅ watch token (not user) — token is what actually changes on login/logout
   useEffect(() => {
-    fetchPoints();
-  }, []);
+    if (token) {
+      fetchPoints();
+    } else {
+      setPoints(0);
+      setLoading(false);
+    }
+  }, [token]);
 
   return (
     <PointsContext.Provider

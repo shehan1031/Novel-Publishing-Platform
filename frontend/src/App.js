@@ -5,30 +5,33 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
 // ===== PUBLIC PAGES =====
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import Browse from "./pages/Browse";
+import Home       from "./pages/Home";
+import Login      from "./pages/Login";
+import Signup     from "./pages/Signup";
+import Browse     from "./pages/Browse";
 import NovelDetail from "./pages/NovelDetail";
 import NovelReader from "./pages/NovelReader";
 
 // ===== DASHBOARDS =====
 import ReaderDashboard from "./pages/ReaderDashboard";
 import AuthorDashboard from "./pages/AuthorDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
+import AdminDashboard  from "./pages/AdminDashboard";
 
 // ===== AUTHOR PAGES =====
-import NovelEditor from "./pages/NovelEditor"; // unified create/edit page
-import ChapterEditor from "./pages/ChapterEditor";
+import NovelEditor     from "./pages/NovelEditor";
+import ChapterEditor   from "./pages/ChapterEditor";
 import AuthorAnalytics from "./pages/AuthorAnalytics";
 
+// ===== COIN SHOP ===== ✅ ADD THIS
+import CoinShop from "./pages/CoinShop";
+
 // ===== AUTH / CONTEXT =====
-import ProtectedRoute from "./components/ProtectedRoute";
-import { AuthContext } from "./context/AuthContext";
+import ProtectedRoute      from "./components/ProtectedRoute";
+import { AuthContext }     from "./context/AuthContext";
 import { LanguageContext } from "./context/LanguageContext";
 
 function App() {
-  const { user } = useContext(AuthContext);
+  const { user }     = useContext(AuthContext);
   const { language } = useContext(LanguageContext);
 
   return (
@@ -37,12 +40,12 @@ function App() {
 
       <Routes>
         {/* ================= PUBLIC ================= */}
-        <Route path="/" element={<Home />} />
-        <Route path="/browse" element={<Browse />} />
-        <Route path="/novel/:novelId" element={<NovelDetail />} />
-        <Route path="/novel/:novelId/chapter/:chapterId" element={<NovelReader />} />
+        <Route path="/"        element={<Home />} />
+        <Route path="/browse"  element={<Browse />} />
+        <Route path="/novel/:novelId"                          element={<NovelDetail />} />
+        <Route path="/novel/:novelId/chapter/:chapterId"       element={<NovelReader />} />
 
-        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
+        <Route path="/login"  element={!user ? <Login />  : <Navigate to="/" replace />} />
         <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/" replace />} />
 
         {/* ================= READER ================= */}
@@ -51,6 +54,26 @@ function App() {
           element={
             <ProtectedRoute roles={["reader"]}>
               <ReaderDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ✅ COIN SHOP — readers buy coins here */}
+        <Route
+          path="/coins"
+          element={
+            <ProtectedRoute roles={["reader"]}>
+              <CoinShop />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ✅ COIN SUCCESS — PayHere redirects here after payment */}
+        <Route
+          path="/coins/success"
+          element={
+            <ProtectedRoute roles={["reader"]}>
+              <CoinShop />
             </ProtectedRoute>
           }
         />
@@ -64,8 +87,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Create new novel */}
         <Route
           path="/author/novel/create"
           element={
@@ -74,8 +95,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Edit existing novel */}
         <Route
           path="/author/novel/:novelId/edit"
           element={
@@ -84,8 +103,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Chapter editor */}
         <Route
           path="/author/novel/:novelId/chapter/create"
           element={
@@ -102,8 +119,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Analytics */}
         <Route
           path="/author/analytics"
           element={
