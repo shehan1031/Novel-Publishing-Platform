@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext }   from "../context/AuthContext";
 import { PointsContext } from "../context/PointsContext";
 import "../styles/coinShop.css";
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
 const DEFAULT_PACKAGES = [
   { packageId: "pkg_100",  coins: 100,  bonus: 0,   price: 50,  popular: false },
@@ -13,26 +13,23 @@ const DEFAULT_PACKAGES = [
   { packageId: "pkg_2500", coins: 2500, bonus: 500, price: 950, popular: false },
 ];
 
-const api = {
+const apiFetch = {
   getPackages: async () => {
-    const res = await fetch(`${API}/points/packages`);
+    const res = await fetch(`${API_URL}/points/packages`);
     if (!res.ok) throw new Error("Failed to load packages");
     return res.json();
   },
   getBalance: async (token) => {
-    const res = await fetch(`${API}/points/me`, {
+    const res = await fetch(`${API_URL}/points/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error("Failed to load balance");
     return res.json();
   },
   createOrder: async (token, packageId) => {
-    const res = await fetch(`${API}/points/create-order`, {
+    const res = await fetch(`${API_URL}/points/create-order`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ packageId, currency: "LKR" }),
     });
     if (!res.ok) {
@@ -42,7 +39,7 @@ const api = {
     return res.json();
   },
   getHistory: async (token) => {
-    const res = await fetch(`${API}/points/history`, {
+    const res = await fetch(`${API_URL}/points/history`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error("Failed to load history");
@@ -63,18 +60,63 @@ const IC = {
       <text x="12" y="16.5" textAnchor="middle" fontSize="9" fontWeight="800" fill="#78350f" fontFamily="sans-serif">N</text>
     </svg>
   ),
-  shield: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
-  card:   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
-  mobile: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,
-  bank:   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
-  check:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
-  clock:  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  alert:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
-  history:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>,
-  book:   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
-  star:   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-  inf:    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  shield:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  card:    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+  mobile:  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,
+  bank:    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+  check:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  clock:   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  alert:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  history: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>,
+  book:    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
+  star:    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  inf:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
 };
+
+/* ── Inject PayHere SDK script dynamically if not already present ── */
+function usePayHereSDK(onReady) {
+  const cbRef = useRef(onReady);
+  cbRef.current = onReady;
+
+  useEffect(() => {
+    const SCRIPT_ID = "payhere-sdk";
+    const SCRIPT_SRC = "https://www.payhere.lk/lib/payhere.js";
+
+    // Already loaded
+    if (window.payhere && typeof window.payhere.startPayment === "function") {
+      cbRef.current(true);
+      return;
+    }
+
+    // Already injected but not ready yet — wait for it
+    let existing = document.getElementById(SCRIPT_ID);
+    if (!existing) {
+      const script = document.createElement("script");
+      script.id   = SCRIPT_ID;
+      script.src  = SCRIPT_SRC;
+      script.async = true;
+      document.head.appendChild(script);
+      existing = script;
+    }
+
+    // Poll until window.payhere is available (max 10s)
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries++;
+      if (window.payhere && typeof window.payhere.startPayment === "function") {
+        clearInterval(timer);
+        cbRef.current(true);
+      }
+      if (tries >= 100) {
+        clearInterval(timer);
+        console.warn("PayHere SDK did not load in time");
+        cbRef.current(false);
+      }
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, []); // run once
+}
 
 export default function CoinShop() {
   const navigate        = useNavigate();
@@ -92,64 +134,37 @@ export default function CoinShop() {
   const [error,       setError]       = useState("");
   const [mounted,     setMounted]     = useState(false);
   const [sdkReady,    setSdkReady]    = useState(false);
-
-  const [phone, setPhone] = useState("");
-  const [bank,  setBank]  = useState("");
+  const [phone,       setPhone]       = useState("");
+  const [bank,        setBank]        = useState("");
 
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  // ✅ SDK init — runs once on mount
-  useEffect(() => {
-    if (window.payhere && typeof window.payhere.startPayment === "function") {
-      setSdkReady(true);
+  // ── Dynamically inject + wait for PayHere SDK ──
+  usePayHereSDK((ready) => {
+    setSdkReady(ready);
+    if (!ready || !window.payhere) return;
 
-      window.payhere.onCompleted = async () => {
-        setSuccess(true);
-        setPaying(false);
-        if (token) {
-          try {
-            const bal = await api.getBalance(token);
-            setBalance(bal.balance ?? 0);
-            fetchPoints?.();
-          } catch { console.warn("Balance refresh failed"); }
-        }
-      };
-      window.payhere.onDismissed = () => setPaying(false);
-      window.payhere.onError     = (err) => {
-        setError("Payment error: " + (err || "Unknown error"));
-        setPaying(false);
-      };
-    } else {
-      // SDK may not be ready immediately — poll briefly
-      let tries = 0;
-      const t = setInterval(() => {
-        tries++;
-        if (window.payhere && typeof window.payhere.startPayment === "function") {
-          setSdkReady(true);
-          clearInterval(t);
-          window.payhere.onCompleted  = async () => {
-            setSuccess(true); setPaying(false);
-            if (token) {
-              const bal = await api.getBalance(token).catch(() => ({ balance: 0 }));
-              setBalance(bal.balance ?? 0);
-              fetchPoints?.();
-            }
-          };
-          window.payhere.onDismissed = () => setPaying(false);
-          window.payhere.onError     = (err) => { setError("Payment error: " + err); setPaying(false); };
-        }
-        if (tries > 50) {
-          clearInterval(t);
-          console.warn("PayHere SDK did not load in time");
-        }
-      }, 100);
-      return () => clearInterval(t);
-    }
-  }, [token, fetchPoints]);
+    window.payhere.onCompleted = async () => {
+      setSuccess(true);
+      setPaying(false);
+      if (token) {
+        try {
+          const bal = await apiFetch.getBalance(token);
+          setBalance(bal.balance ?? 0);
+          fetchPoints?.();
+        } catch { /* silent */ }
+      }
+    };
+    window.payhere.onDismissed = () => setPaying(false);
+    window.payhere.onError     = (err) => {
+      setError("Payment error: " + (err || "Unknown error"));
+      setPaying(false);
+    };
+  });
 
   // Load packages
   useEffect(() => {
-    api.getPackages()
+    apiFetch.getPackages()
       .then(pkgs => { if (Array.isArray(pkgs) && pkgs.length) setPackages(pkgs); })
       .catch(() => {});
   }, []);
@@ -157,7 +172,7 @@ export default function CoinShop() {
   // Load balance
   useEffect(() => {
     if (!token) return;
-    api.getBalance(token)
+    apiFetch.getBalance(token)
       .then(res => setBalance(res.balance ?? 0))
       .catch(() => {});
   }, [token]);
@@ -165,17 +180,16 @@ export default function CoinShop() {
   // Load history
   useEffect(() => {
     if (!showHistory || !token) return;
-    api.getHistory(token).then(setHistory).catch(() => setHistory([]));
+    apiFetch.getHistory(token).then(setHistory).catch(() => setHistory([]));
   }, [showHistory, token]);
 
   const pkg = packages[selIdx] ?? packages[0] ?? {};
 
-  // ✅ Clean validate — no fake card validation (PayHere handles card UI)
   const validate = () => {
     if (!user || !token) { setError("Please log in to purchase coins."); return false; }
     if (!pkg.packageId)  { setError("Select a package first.");          return false; }
-    if (!sdkReady)       { setError("PayHere is loading. Please wait."); return false; }
-    if (method === "mobile" && phone.replace(/\D/g,"").length < 10) {
+    if (!sdkReady)       { setError("PayHere is still loading. Please wait a moment."); return false; }
+    if (method === "mobile" && phone.replace(/\D/g, "").length < 10) {
       setError("Enter a valid 10-digit mobile number."); return false;
     }
     return true;
@@ -186,18 +200,16 @@ export default function CoinShop() {
     if (!validate()) return;
     setPaying(true);
     try {
-      const order = await api.createOrder(token, pkg.packageId);
-      console.log("ORDER:", order); // debug
-
+      const order = await apiFetch.createOrder(token, pkg.packageId);
       window.payhere.startPayment({
         sandbox:     true,
         merchant_id: order.merchantId,
         return_url:  `${window.location.origin}/coins/success`,
         cancel_url:  `${window.location.origin}/coins`,
-        notify_url:  `${API}/points/notify`,
+        notify_url:  `${API_URL}/points/notify`,
         order_id:    order.orderId,
         items:       `${pkg.coins} Navella Coins`,
-        amount:      order.amount,   // ✅ already toFixed(2) from backend
+        amount:      order.amount,
         currency:    order.currency,
         hash:        order.hash,
         first_name:  user?.name?.split(" ")[0] || "User",
@@ -221,14 +233,9 @@ export default function CoinShop() {
       <div className="cs-hero">
         <div className="cs-hero-grid" aria-hidden/>
         <div className="cs-hero-inner">
-          <div className="cs-pill">
-            <span className="cs-pill-dot"/>
-            Navella Coins
-          </div>
+          <div className="cs-pill"><span className="cs-pill-dot"/>Navella Coins</div>
           <h1 className="cs-h1">Top Up Your <em>Coins</em></h1>
-          <p className="cs-sub">
-            Purchase coins to unlock premium chapters and support your favourite authors
-          </p>
+          <p className="cs-sub">Purchase coins to unlock premium chapters and support your favourite authors</p>
           <div className="cs-balance">
             <div className="cs-bal-ico">{IC.coin}</div>
             <div>
@@ -261,9 +268,7 @@ export default function CoinShop() {
                     <div className="cs-hist-right">
                       <span className={`cs-hist-status s-${h.paymentStatus}`}>{h.paymentStatus}</span>
                       <span className="cs-hist-amt">LKR {h.amount}</span>
-                      <span className="cs-hist-date">
-                        {new Date(h.createdAt).toLocaleDateString("en-LK")}
-                      </span>
+                      <span className="cs-hist-date">{new Date(h.createdAt).toLocaleDateString("en-LK")}</span>
                     </div>
                   </div>
                 ))}
@@ -280,12 +285,10 @@ export default function CoinShop() {
           <div className="cs-sec-label">Choose a package</div>
           <div className="cs-pkg-grid">
             {packages.map((p, i) => (
-              <div
-                key={p.packageId}
+              <div key={p.packageId}
                 className={`cs-pkg${i === selIdx ? " sel" : ""}${p.popular ? " pop" : ""}`}
                 onClick={() => { setSelIdx(i); setSuccess(false); setError(""); }}
-                style={{ animationDelay: `${i * 0.07}s` }}
-              >
+                style={{ animationDelay: `${i * 0.07}s` }}>
                 {p.popular && <span className="cs-pop-badge">Most popular</span>}
                 <div className="cs-pkg-top">
                   <div className="cs-pkg-ico">{IC.coin}</div>
@@ -315,21 +318,15 @@ export default function CoinShop() {
               </div>
               <div className="cs-sum-row">
                 <span className="cs-sum-lbl">Bonus coins</span>
-                <span className="cs-sum-val green">
-                  {(pkg.bonus ?? 0) > 0 ? `+${pkg.bonus} free` : "None"}
-                </span>
+                <span className="cs-sum-val green">{(pkg.bonus ?? 0) > 0 ? `+${pkg.bonus} free` : "None"}</span>
               </div>
               <div className="cs-sum-row">
                 <span className="cs-sum-lbl">Total coins</span>
-                <span className="cs-sum-val gold">
-                  {((pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} coins
-                </span>
+                <span className="cs-sum-val gold">{((pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} coins</span>
               </div>
               <div className="cs-sum-row">
                 <span className="cs-sum-lbl">New balance after</span>
-                <span className="cs-sum-val gold">
-                  {(balance + (pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} coins
-                </span>
+                <span className="cs-sum-val gold">{(balance + (pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} coins</span>
               </div>
               <div className="cs-sum-row">
                 <span className="cs-sum-lbl">Payment method</span>
@@ -372,20 +369,17 @@ export default function CoinShop() {
                 <div className="cs-secure-badge">
                   {IC.shield}
                   {sdkReady
-                    ? <span style={{ color:"#34d399" }}>256-bit SSL</span>
-                    : <span style={{ color:"#f59e0b" }}>Loading SDK…</span>
+                    ? <span style={{ color: "#34d399" }}>256-bit SSL</span>
+                    : <span style={{ color: "#f59e0b" }}>Loading SDK…</span>
                   }
                 </div>
               </div>
 
               <div className="cs-methods">
                 {METHODS.map(m => (
-                  <button
-                    key={m.key}
-                    type="button"
+                  <button key={m.key} type="button"
                     className={`cs-method${method === m.key ? " sel" : ""}`}
-                    onClick={() => { setMethod(m.key); setError(""); }}
-                  >
+                    onClick={() => { setMethod(m.key); setError(""); }}>
                     <span className="cs-method-dot"/>
                     {IC[m.key === "banking" ? "bank" : m.key]}
                     {m.label}
@@ -400,66 +394,49 @@ export default function CoinShop() {
                 </div>
               )}
 
-              {/* ✅ PayHere handles card UI itself — we only show info fields */}
               {method === "card" && !success && (
                 <div className="cs-form">
                   <div className="cs-field cs-full">
-                    <label>FULL NAME</label>
-                    <input type="text" value={user?.name || ""} readOnly
-                      style={{ opacity:0.6, cursor:"default" }}/>
+                    <label htmlFor="cs-name">FULL NAME</label>
+                    <input id="cs-name" name="fullName" type="text"
+                      value={user?.name || ""} readOnly style={{ opacity: 0.6, cursor: "default" }}/>
                   </div>
                   <div className="cs-field cs-full">
-                    <label>EMAIL</label>
-                    <input type="email" value={user?.email || ""} readOnly
-                      style={{ opacity:0.6, cursor:"default" }}/>
+                    <label htmlFor="cs-email">EMAIL</label>
+                    <input id="cs-email" name="email" type="email"
+                      value={user?.email || ""} readOnly style={{ opacity: 0.6, cursor: "default" }}/>
                   </div>
-                  <p className="cs-method-note">
-                    Your card details will be entered securely in the PayHere payment popup.
-                  </p>
+                  <p className="cs-method-note">Your card details will be entered securely in the PayHere payment popup.</p>
                 </div>
               )}
 
               {method === "mobile" && !success && (
                 <div className="cs-form">
                   <div className="cs-field cs-full">
-                    <label>MOBILE NUMBER</label>
-                    <input
-                      type="tel"
-                      placeholder="07X XXX XXXX"
+                    <label htmlFor="cs-phone">MOBILE NUMBER</label>
+                    <input id="cs-phone" name="phone" type="tel" placeholder="07X XXX XXXX"
                       value={phone}
-                      onChange={e => setPhone(e.target.value.replace(/\D/g,"").slice(0,10))}
-                    />
+                      onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}/>
                   </div>
-                  <p className="cs-method-note">
-                    You'll receive an OTP to confirm via eZ Cash or mCash.
-                  </p>
+                  <p className="cs-method-note">You'll receive an OTP to confirm via eZ Cash or mCash.</p>
                 </div>
               )}
 
               {method === "banking" && !success && (
                 <div className="cs-form">
                   <div className="cs-field cs-full">
-                    <label>YOUR BANK</label>
-                    <input
-                      type="text"
+                    <label htmlFor="cs-bank">YOUR BANK</label>
+                    <input id="cs-bank" name="bank" type="text"
                       placeholder="e.g. BOC, Sampath, HNB, Commercial…"
-                      value={bank}
-                      onChange={e => setBank(e.target.value)}
-                    />
+                      value={bank} onChange={e => setBank(e.target.value)}/>
                   </div>
-                  <p className="cs-method-note">
-                    You'll be redirected to your bank's portal to complete payment.
-                  </p>
+                  <p className="cs-method-note">You'll be redirected to your bank's portal to complete payment.</p>
                 </div>
               )}
 
               {!success && (
-                <button
-                  className="cs-pay-btn"
-                  type="button"
-                  onClick={handlePay}
-                  disabled={paying || !sdkReady || !user || !token}
-                >
+                <button className="cs-pay-btn" type="button" onClick={handlePay}
+                  disabled={paying || !sdkReady || !user || !token}>
                   {paying
                     ? <><span className="cs-spinner"/> Redirecting to PayHere…</>
                     : <>{IC.shield} Pay LKR {pkg.price} via PayHere</>
@@ -469,8 +446,7 @@ export default function CoinShop() {
 
               {!user && (
                 <p className="cs-login-note">
-                  <button className="cs-login-link" type="button"
-                    onClick={() => navigate("/login")}>Log in</button>{" "}
+                  <button className="cs-login-link" type="button" onClick={() => navigate("/login")}>Log in</button>{" "}
                   to purchase coins.
                 </p>
               )}

@@ -2,17 +2,22 @@ const mongoose = require("mongoose");
 
 const novelSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    description: String,
-    cover: String,
-    genre: String,
-    language: String,
-    status: { type: String, default: "draft" },
-    author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    title:       { type: String, required: true, trim: true },
+    description: { type: String, default: "" },
+    cover:       { type: String, default: "" },
+    genre:       { type: String, default: "" },
+    language:    { type: String, default: "English" },
+    status:      {
+      type: String,
+      enum: ["draft", "published", "banned"],
+      default: "draft",
+    },
+    author:   { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     chapters: [{ type: mongoose.Schema.Types.ObjectId, ref: "Chapter" }],
-
-    // ✅ Track views
-    views: { type: Number, default: 0 },
+    views:       { type: Number, default: 0 },
+    rating:      { type: Number, default: 0 },       // ✅ average rating
+    ratingCount: { type: Number, default: 0 },       // ✅ total ratings
+    banned:      { type: Boolean, default: false },  // ✅ for admin ban
   },
   { timestamps: true }
 );

@@ -25,7 +25,6 @@
   --t2:    rgba(180,200,255,0.6);
   --t3:    rgba(120,150,220,0.38);
 
-  /* ── use Inter which navbar already loads ── */
   --fh: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --fb: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
@@ -88,10 +87,7 @@
   font-weight: 800; color: #fff; letter-spacing: -.03em;
   margin-bottom: 8px; line-height: 1.15;
 }
-.cs-h1 em {
-  font-style: normal;
-  color: var(--al);
-}
+.cs-h1 em { font-style: normal; color: var(--al); }
 .cs-sub { font-size: .9rem; color: var(--t2); margin-bottom: 26px; line-height: 1.6; }
 
 /* balance strip */
@@ -117,6 +113,38 @@
   color: var(--t2); cursor: pointer; transition: all .15s;
 }
 .cs-hist-btn:hover { background: rgba(255,255,255,0.1); color: var(--t1); }
+
+/* ════ CORS / LOCALHOST WARNING BANNER ════ */
+.cs-cors-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(245,158,11,.07);
+  border-top: none;
+  border-bottom: 1px solid rgba(245,158,11,.18);
+  border-left: 4px solid #f59e0b;
+  color: #fcd34d;
+  font-size: .82rem;
+  line-height: 1.65;
+  padding: 14px 24px;
+  width: 100%;
+}
+.cs-cors-banner svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #f59e0b;
+  opacity: .9;
+}
+.cs-cors-banner strong { color: #fbbf24; font-weight: 700; }
+.cs-cors-banner code {
+  background: rgba(245,158,11,.14);
+  border: 1px solid rgba(245,158,11,.22);
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: .76rem;
+  color: #fcd34d;
+  font-family: 'Courier New', monospace;
+}
 
 /* ════ HISTORY PANEL ════ */
 .cs-hist-panel {
@@ -163,7 +191,7 @@
 /* ════ PACKAGES ════ */
 .cs-pkg-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* always 4 columns */
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
 }
 .cs-pkg {
@@ -174,7 +202,6 @@
 }
 @keyframes pkgIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 
-/* top accent bar */
 .cs-pkg::after {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
   background: linear-gradient(90deg, rgba(245,158,11,.3), rgba(245,158,11,.7), rgba(245,158,11,.3));
@@ -214,7 +241,10 @@
 .cs-pkg-sub   { font-size: .68rem; color: var(--t3); }
 
 /* ════ TWO COL ════ */
-.cs-two-col { display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; align-items: start; position: relative; z-index: 2; }
+.cs-two-col {
+  display: grid; grid-template-columns: 1fr 1.6fr;
+  gap: 20px; align-items: start; position: relative; z-index: 2;
+}
 
 /* ════ SUMMARY ════ */
 .cs-summary {
@@ -398,4 +428,5 @@
   .cs-form-row { grid-template-columns: 1fr; }
   .cs-balance  { flex-wrap: wrap; justify-content: center; }
   .cs-pkg-grid { grid-template-columns: repeat(2, 1fr); }
+  .cs-cors-banner { font-size: .76rem; padding: 12px 16px; }
 }

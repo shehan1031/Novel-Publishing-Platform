@@ -1,10 +1,18 @@
 const express = require("express");
-const router = express.Router();
-const chapterController = require("../controllers/chapterController");
-const auth = require("../middleware/authMiddleware");
+const router  = express.Router();
+const auth    = require("../middleware/authMiddleware");
+const {
+  getChaptersByNovel,
+  getChapterById,
+  createChapter,
+  updateChapter,
+  deleteChapter,
+} = require("../controllers/chapterController");
 
-router.get("/:chapterId", chapterController.getChapterById);
-router.post("/", auth, chapterController.createChapter);
-router.put("/:chapterId", auth, chapterController.updateChapter);
+router.get("/novel/:novelId", getChaptersByNovel);  // GET all chapters for a novel
+router.get("/:chapterId",     getChapterById);       // GET single chapter
+router.post("/",         auth, createChapter);       // POST create
+router.put("/:chapterId",auth, updateChapter);       // PUT update
+router.delete("/:chapterId", auth, deleteChapter);   // DELETE
 
 module.exports = router;

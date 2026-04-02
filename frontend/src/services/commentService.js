@@ -1,19 +1,21 @@
 import API from "./api";
 
-/**
- * Get comments for a chapter
- */
+/* GET /api/comments/chapters/:chapterId/comments */
 export const getCommentsByChapter = async (chapterId) => {
-  const res = await API.get(`/chapters/${chapterId}/comments`);
+  const res = await API.get(`/comments/chapters/${chapterId}/comments`);
   return res.data || [];
 };
 
-/**
- * Add a new comment (requires auth)
- */
+/* POST /api/comments/chapters/:chapterId/comments */
 export const addCommentToChapter = async (chapterId, content) => {
-  const res = await API.post(`/chapters/${chapterId}/comments`, {
+  const res = await API.post(`/comments/chapters/${chapterId}/comments`, {
     content,
   });
+  return res.data;
+};
+
+/* DELETE /api/comments/:id */
+export const deleteComment = async (id) => {
+  const res = await API.delete(`/comments/${id}`);
   return res.data;
 };

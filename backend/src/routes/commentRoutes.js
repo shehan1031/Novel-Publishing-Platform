@@ -1,24 +1,19 @@
 const express = require("express");
-const router = express.Router();
-
+const router  = express.Router();
+const auth    = require("../middleware/authMiddleware");
 const {
   getCommentsByChapter,
   addCommentToChapter,
+  deleteComment,
 } = require("../controllers/commentController");
 
-const protect = require("../middleware/authMiddleware");
+// GET  /api/comments/chapters/:chapterId/comments
+router.get("/chapters/:chapterId/comments",  getCommentsByChapter);
 
-// GET comments
-router.get(
-  "/chapters/:chapterId/comments",
-  getCommentsByChapter
-);
+// POST /api/comments/chapters/:chapterId/comments  (auth required)
+router.post("/chapters/:chapterId/comments", auth, addCommentToChapter);
 
-// POST comment (LOGIN REQUIRED)
-router.post(
-  "/chapters/:chapterId/comments",
-  protect,
-  addCommentToChapter
-);
+// DELETE /api/comments/:id  (auth required)
+router.delete("/:id", auth, deleteComment);
 
 module.exports = router;

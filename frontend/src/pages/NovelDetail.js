@@ -1,164 +1,236 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
+import {
+  getNovelById,
+  rateNovel,
+  getMyRating,
+} from "../services/novelService";
+import API from "../services/api";
 import "../styles/novelDetail.css";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = (process.env.REACT_APP_API_URL || "http://localhost:5000/api")
+  .replace("/api", "");
 
-/* ── small helpers ── */
-const StarRating = ({ rating }) => {
+/* ─── Star picker (interactive) ────────────────────────── */
+const StarPicker = ({ value, onChange, disabled }) => {
+  const [hovered, setHovered] = useState(0);
+  const display = hovered || value;
+  return (
+    <div className="nd-star-picker">
+      {[1, 2, 3, 4, 5].map(i => (
+        <button
+          key={i}
+          type="button"
+          className={`nd-star-btn${i <= display ? " lit" : ""}`}
+          onMouseEnter={() => !disabled && setHovered(i)}
+          onMouseLeave={() => setHovered(0)}
+          onClick={() => !disabled && onChange(i)}
+          disabled={disabled}
+          aria-label={`Rate ${i} star${i > 1 ? "s" : ""}`}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24"
+            fill={i <= display ? "#f59e0b" : "none"}
+            stroke="#f59e0b" strokeWidth="1.8"
+            strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+/* ─── Star display (read-only) ──────────────────────────── */
+const StarDisplay = ({ rating, count }) => {
   const r = parseFloat(rating) || 0;
   return (
-    <div className="nd-stars" aria-label={`Rating: ${r} out of 5`}>
-      {[1,2,3,4,5].map(i => (
-        <svg key={i} width="15" height="15" viewBox="0 0 24 24"
+    <div className="nd-star-display">
+      {[1, 2, 3, 4, 5].map(i => (
+        <svg key={i} width="14" height="14" viewBox="0 0 24 24"
           fill={i <= Math.round(r) ? "#f59e0b" : "none"}
           stroke="#f59e0b" strokeWidth="1.8"
           strokeLinecap="round" strokeLinejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
       ))}
-      <span className="nd-rating-num">{r.toFixed(1)}</span>
+      <span className="nd-rating-val">{r.toFixed(1)}</span>
+      {count > 0 && (
+        <span className="nd-rating-count">({count})</span>
+      )}
     </div>
   );
 };
 
-const Tag = ({ children, color }) => (
-  <span className={`nd-tag ${color || ""}`}>{children}</span>
+const Tag = ({ children, color = "blue" }) => (
+  <span className={`nd-tag nd-tag--${color}`}>{children}</span>
 );
 
-const NovelDetail = () => {
-  const { novelId }  = useParams();
-  const navigate     = useNavigate();
-  const { token, user, setUser } = useContext(AuthContext);
+export default function NovelDetail() {
+  const { novelId }       = useParams();
+  const navigate          = useNavigate();
+  const { user, token }   = useContext(AuthContext);
 
   const [novel,           setNovel]           = useState(null);
   const [loading,         setLoading]         = useState(true);
-  const [showModal,       setShowModal]       = useState(false);
-  const [selectedChapter, setSelectedChapter] = useState(null);
-  const [subscribing,     setSubscribing]     = useState(false);
+  const [activeTab,       setActiveTab]       = useState("chapters");
+  const [coverError,      setCoverError]      = useState(false);
+  const [expandDesc,      setExpandDesc]      = useState(false);
+
+  // bookmark
   const [bookmarked,      setBookmarked]      = useState(false);
   const [bmLoading,       setBmLoading]       = useState(false);
   const [bmFeedback,      setBmFeedback]      = useState(false);
-  const [coverError,      setCoverError]      = useState(false);
-  const [expandDesc,      setExpandDesc]      = useState(false);
-  const [activeTab,       setActiveTab]       = useState("chapters"); // chapters | about
 
+  // rating
+  const [myRating,        setMyRating]        = useState(0);
+  const [liveRating,      setLiveRating]      = useState(0);
+  const [liveRatingCount, setLiveRatingCount] = useState(0);
+  const [ratingLoading,   setRatingLoading]   = useState(false);
+  const [ratingFeedback,  setRatingFeedback]  = useState("");
+
+  /* ── fetch novel ── */
+  const fetchNovel = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getNovelById(novelId);
+      setNovel(data);
+      setLiveRating(data.rating      || 0);
+      setLiveRatingCount(data.ratingCount || 0);
+    } catch (err) {
+      console.error("Failed to load novel:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [novelId]);
+
+  useEffect(() => { fetchNovel(); }, [fetchNovel]);
+
+  /* ── fetch user's own rating ── */
   useEffect(() => {
-    const fetchNovel = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/novels/${novelId}`);
-        setNovel(res.data);
-        if (user?.bookmarks?.includes(novelId)) setBookmarked(true);
-      } catch (err) {
-        console.error("Failed to load novel", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchNovel();
-  }, [novelId, user]);
+    if (!token || !novelId) return;
+    getMyRating(novelId, token)
+      .then(res => setMyRating(res.rating || 0))
+      .catch(() => {});
+  }, [token, novelId]);
 
-  /* ── loading screen ── */
+  /* ── check bookmark ── */
+  useEffect(() => {
+    if (!token || !novelId) return;
+    API.get(`/bookmarks/${novelId}/check`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => setBookmarked(res.data.bookmarked || false))
+      .catch(() => {});
+  }, [token, novelId]);
+
   if (loading) return (
     <div className="nd-loading">
-      <div className="nd-spinner" />
+      <div className="nd-spin"/>
       <p>Loading novel…</p>
     </div>
   );
-  if (!novel) return null;
 
-  const isLocked = (ch) => ch.isPremium && (!user || !user.isSubscribed);
+  if (!novel) return (
+    <div className="nd-loading"><p>Novel not found.</p></div>
+  );
 
-  const handleChapterClick = (chapter) => {
-    if (isLocked(chapter)) {
-      setSelectedChapter(chapter);
-      setShowModal(true);
-      return;
-    }
-    navigate(`/novel/${novelId}/chapter/${chapter._id}`);
-  };
+  const coverUrl     = !coverError && novel.cover
+    ? `${API_BASE}${novel.cover}`
+    : null;
+  const totalCh      = novel.chapters?.length || 0;
+  const premiumCh    = novel.chapters?.filter(c => c.isPremium).length || 0;
+  const firstChapter = novel.chapters?.[0];
 
-  const handleSubscribe = async () => {
-    if (!token) return alert("You must be logged in to subscribe");
-    setSubscribing(true);
-    try {
-      await axios.post(`${API_BASE}/api/subscribe`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser({ ...user, isSubscribed: true });
-      setShowModal(false);
-      if (selectedChapter) navigate(`/novel/${novelId}/chapter/${selectedChapter._id}`);
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      alert("Subscription failed. Please try again.");
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
+  /* ── bookmark ── */
   const handleBookmark = async () => {
-    if (!user) return alert("You must be logged in to bookmark");
+    if (!user) { navigate("/login"); return; }
     setBmLoading(true);
     try {
-      const res = await axios.post(
-        `${API_BASE}/api/novels/${novelId}/bookmark`, {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setBookmarked(res.data.bookmarked);
-      setBmFeedback(true);
-      setTimeout(() => setBmFeedback(false), 1600);
+      if (bookmarked) {
+        await API.delete(`/bookmarks/${novelId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setBookmarked(false);
+      } else {
+        await API.post(`/bookmarks/${novelId}`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setBookmarked(true);
+        setBmFeedback(true);
+        setTimeout(() => setBmFeedback(false), 1800);
+      }
     } catch (err) {
-      console.error(err.response?.data || err.message);
+      console.error("Bookmark error:", err.message);
     } finally {
       setBmLoading(false);
     }
   };
 
-  const firstChapter = novel.chapters?.[0];
-  const coverUrl = !coverError && novel.cover ? `${API_BASE}${novel.cover}` : null;
-  const totalChapters = novel.chapters?.length || 0;
-  const premiumCount  = novel.chapters?.filter(c => c.isPremium).length || 0;
+  /* ── rate ── */
+  const handleRate = async (stars) => {
+    if (!user) { navigate("/login"); return; }
+    if (ratingLoading) return;
+
+    // optimistic UI update
+    setMyRating(stars);
+    setRatingLoading(true);
+    setRatingFeedback("");
+
+    try {
+      // ✅ uses novelService which always passes token correctly
+      const result = await rateNovel(novelId, stars, token);
+      setLiveRating(result.rating);
+      setLiveRatingCount(result.ratingCount);
+      setRatingFeedback("Thanks for rating!");
+      setTimeout(() => setRatingFeedback(""), 2400);
+    } catch (err) {
+      console.error("Rating error:", err.message);
+      // revert on failure
+      setMyRating(0);
+      setRatingFeedback(
+        err.response?.data?.message || "Rating failed — please try again."
+      );
+      setTimeout(() => setRatingFeedback(""), 2400);
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
+  const handleChapterClick = (ch) => {
+    navigate(`/novel/${novelId}/chapter/${ch._id}`);
+  };
 
   return (
     <div className="nd">
 
-      {/* ══ HERO BAND ══ */}
+      {/* ══ HERO ══ */}
       <div className="nd-hero">
-        {/* blurred cover backdrop */}
         {coverUrl && (
-          <div
-            className="nd-hero-bg"
-            style={{ backgroundImage: `url(${coverUrl})` }}
-          />
+          <div className="nd-hero-bg"
+            style={{ backgroundImage: `url(${coverUrl})` }}/>
         )}
-        <div className="nd-hero-overlay" />
+        <div className="nd-hero-overlay"/>
 
         <div className="nd-hero-inner">
-          {/* cover */}
+          {/* cover image */}
           <div className="nd-cover-wrap">
             {coverUrl ? (
-              <img
-                src={coverUrl}
-                alt={novel.title}
+              <img src={coverUrl} alt={novel.title}
                 className="nd-cover-img"
-                onError={() => setCoverError(true)}
-              />
+                onError={() => setCoverError(true)}/>
             ) : (
               <div className="nd-cover-fallback">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
-                  stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+                  stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"
                   strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
               </div>
             )}
-
-            {/* status badge */}
             {novel.status && (
-              <span className={`nd-status-badge ${novel.status}`}>
+              <span className={`nd-status-badge nd-status--${novel.status}`}>
                 {novel.status}
               </span>
             )}
@@ -166,9 +238,10 @@ const NovelDetail = () => {
 
           {/* meta */}
           <div className="nd-meta">
-            {/* breadcrumb */}
             <div className="nd-breadcrumb">
-              <span onClick={() => navigate("/browse")} className="nd-bc-link">Browse</span>
+              <span className="nd-bc-link" onClick={() => navigate("/browse")}>
+                Browse
+              </span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round">
@@ -188,64 +261,70 @@ const NovelDetail = () => {
               </span>
             </div>
 
-            <StarRating rating={novel.rating} />
+            <StarDisplay rating={liveRating} count={liveRatingCount}/>
 
-            {/* tags */}
             <div className="nd-tags-row">
               {novel.genre    && <Tag color="blue">{novel.genre}</Tag>}
               {novel.language && <Tag color="purple">{novel.language}</Tag>}
-              {premiumCount > 0 && <Tag color="amber">⭐ Premium</Tag>}
+              {premiumCh > 0  && <Tag color="amber">⭐ Premium</Tag>}
             </div>
 
-            {/* quick stats */}
             <div className="nd-quick-stats">
               <div className="nd-qs-item">
-                <span className="nd-qs-val">{totalChapters}</span>
-                <span className="nd-qs-label">Chapters</span>
+                <span className="nd-qs-val">{totalCh}</span>
+                <span className="nd-qs-lbl">Chapters</span>
               </div>
-              <div className="nd-qs-div" />
+              <div className="nd-qs-div"/>
               <div className="nd-qs-item">
-                <span className="nd-qs-val">{premiumCount}</span>
-                <span className="nd-qs-label">Premium</span>
+                <span className="nd-qs-val">{premiumCh}</span>
+                <span className="nd-qs-lbl">Premium</span>
               </div>
-              <div className="nd-qs-div" />
+              <div className="nd-qs-div"/>
               <div className="nd-qs-item">
-                <span className="nd-qs-val">{parseFloat(novel.rating || 0).toFixed(1)}</span>
-                <span className="nd-qs-label">Rating</span>
+                <span className="nd-qs-val">
+                  {(novel.views || 0).toLocaleString()}
+                </span>
+                <span className="nd-qs-lbl">Views</span>
+              </div>
+              <div className="nd-qs-div"/>
+              <div className="nd-qs-item">
+                <span className="nd-qs-val">
+                  {parseFloat(liveRating).toFixed(1)}
+                </span>
+                <span className="nd-qs-lbl">Rating</span>
               </div>
             </div>
 
-            {/* CTA buttons */}
             <div className="nd-cta-row">
               {firstChapter && (
-                <button
-                  className="nd-btn-primary"
-                  onClick={() => handleChapterClick(firstChapter)}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <button className="nd-btn-primary"
+                  onClick={() => handleChapterClick(firstChapter)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24"
+                    fill="currentColor">
                     <polygon points="5 3 19 12 5 21 5 3"/>
                   </svg>
                   Start Reading
                 </button>
               )}
-
               <button
-                className={`nd-btn-bm${bookmarked ? " saved" : ""}${bmLoading ? " loading" : ""}`}
+                className={`nd-btn-bm${bookmarked ? " saved" : ""}${bmLoading ? " busy" : ""}`}
                 onClick={handleBookmark}
+                disabled={bmLoading}
               >
                 {bmLoading ? (
-                  <svg className="spin" width="15" height="15" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg className="nd-spin-ico" width="14" height="14"
+                    viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5">
                     <path d="M21 12a9 9 0 1 1-6.22-8.56"/>
                   </svg>
                 ) : bmFeedback ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2.5"
                     strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24"
+                  <svg width="14" height="14" viewBox="0 0 24 24"
                     fill={bookmarked ? "currentColor" : "none"}
                     stroke="currentColor" strokeWidth="2.5"
                     strokeLinecap="round" strokeLinejoin="round">
@@ -262,25 +341,19 @@ const NovelDetail = () => {
       {/* ══ TABS ══ */}
       <div className="nd-tabs-bar">
         <div className="nd-tabs-inner">
-          {["chapters","about"].map(tab => (
+          {[
+            { id: "chapters", label: "Chapters", count: totalCh },
+            { id: "about",    label: "About"                    },
+            { id: "rate",     label: "Rate"                     },
+          ].map(t => (
             <button
-              key={tab}
-              className={`nd-tab${activeTab === tab ? " active" : ""}`}
-              onClick={() => setActiveTab(tab)}
+              key={t.id}
+              className={`nd-tab${activeTab === t.id ? " active" : ""}`}
+              onClick={() => setActiveTab(t.id)}
             >
-              {tab === "chapters" ? (
-                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                  strokeLinejoin="round">
-                  <path d="M4 6h16M4 12h16M4 18h16"/>
-                </svg> Chapters <span className="nd-tab-badge">{totalChapters}</span></>
-              ) : (
-                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                  strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 16v-4M12 8h.01"/>
-                </svg> About</>
+              {t.label}
+              {t.count != null && (
+                <span className="nd-tab-badge">{t.count}</span>
               )}
             </button>
           ))}
@@ -290,149 +363,169 @@ const NovelDetail = () => {
       {/* ══ BODY ══ */}
       <div className="nd-body">
 
-        {/* ── CHAPTERS TAB ── */}
+        {/* ── CHAPTERS ── */}
         {activeTab === "chapters" && (
           <div className="nd-chapters-wrap">
-            {totalChapters === 0 ? (
-              <div className="nd-no-chapters">
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
-                  stroke="rgba(100,116,139,0.5)" strokeWidth="1.5"
-                  strokeLinecap="round" strokeLinejoin="round">
+            {totalCh === 0 ? (
+              <div className="nd-empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="1.2"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  style={{ opacity: .2 }}>
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
                 <p>No chapters published yet.</p>
               </div>
             ) : (
-              <ul className="nd-chapter-list">
-                {novel.chapters.map((ch, idx) => {
-                  const locked = isLocked(ch);
-                  return (
-                    <li key={ch._id}>
-                      <button
-                        className={`nd-chapter-row${locked ? " locked" : ""}`}
-                        onClick={() => handleChapterClick(ch)}
-                      >
-                        {/* number */}
-                        <span className="nd-ch-num">{String(idx + 1).padStart(2,"0")}</span>
-
-                        {/* info */}
-                        <span className="nd-ch-info">
-                          <span className="nd-ch-title">{ch.title}</span>
-                          {ch.isPremium && (
-                            <span className="nd-ch-premium-tag">Premium</span>
-                          )}
-                        </span>
-
-                        {/* right icon */}
-                        {locked ? (
-                          <svg className="nd-ch-icon lock" width="15" height="15"
-                            viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" strokeWidth="2"
-                            strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                          </svg>
-                        ) : (
-                          <svg className="nd-ch-icon arrow" width="15" height="15"
-                            viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" strokeWidth="2"
-                            strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m9 18 6-6-6-6"/>
-                          </svg>
+              <ul className="nd-ch-list">
+                {novel.chapters.map((ch, idx) => (
+                  <li key={ch._id}>
+                    <button
+                      className={`nd-ch-row${ch.isPremium ? " premium" : ""}`}
+                      onClick={() => handleChapterClick(ch)}
+                    >
+                      <span className="nd-ch-num">
+                        {String(idx + 1).padStart(2, "0")}
+                      </span>
+                      <span className="nd-ch-info">
+                        <span className="nd-ch-title">{ch.title}</span>
+                        {ch.isPremium && (
+                          <span className="nd-ch-badge">
+                            {ch.coinCost > 0 ? `${ch.coinCost} coins` : "Premium"}
+                          </span>
                         )}
-                      </button>
-                    </li>
-                  );
-                })}
+                      </span>
+                      <svg className="nd-ch-arrow" width="14" height="14"
+                        viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2"
+                        strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
           </div>
         )}
 
-        {/* ── ABOUT TAB ── */}
+        {/* ── ABOUT ── */}
         {activeTab === "about" && (
-          <div className="nd-about-wrap">
-            <div className="nd-desc-block">
-              <h2 className="nd-section-title">Synopsis</h2>
-              <div className={`nd-desc-text${expandDesc ? " expanded" : ""}`}>
+          <div className="nd-about">
+            <div className="nd-about-section">
+              <h2 className="nd-section-h">Synopsis</h2>
+              <div className={`nd-desc${expandDesc ? " expanded" : ""}`}>
                 <p>{novel.description || "No description available."}</p>
               </div>
-              {(novel.description || "").length > 300 && (
-                <button
-                  className="nd-expand-btn"
-                  onClick={() => setExpandDesc(!expandDesc)}
-                >
+              {(novel.description || "").length > 280 && (
+                <button className="nd-expand-btn"
+                  onClick={() => setExpandDesc(v => !v)}>
                   {expandDesc ? "Show less ↑" : "Read more ↓"}
                 </button>
               )}
             </div>
 
-            {/* details grid */}
             <div className="nd-details-grid">
               {[
                 { label: "Author",   value: novel.author?.name || "Unknown" },
-                { label: "Genre",    value: novel.genre    || "—" },
-                { label: "Language", value: novel.language || "—" },
-                { label: "Status",   value: novel.status   || "—" },
-                { label: "Rating",   value: `${parseFloat(novel.rating||0).toFixed(1)} / 5` },
-                { label: "Chapters", value: totalChapters },
+                { label: "Genre",    value: novel.genre        || "—"        },
+                { label: "Language", value: novel.language     || "—"        },
+                { label: "Status",   value: novel.status       || "—"        },
+                { label: "Chapters", value: totalCh                          },
+                { label: "Views",    value: (novel.views || 0).toLocaleString() },
+                { label: "Rating",   value: `${parseFloat(liveRating).toFixed(1)} / 5` },
+                { label: "Ratings",  value: liveRatingCount                  },
               ].map(d => (
-                <div key={d.label} className="nd-detail-item">
-                  <span className="nd-detail-label">{d.label}</span>
+                <div key={d.label} className="nd-detail-cell">
+                  <span className="nd-detail-lbl">{d.label}</span>
                   <span className="nd-detail-val">{d.value}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
-      </div>
 
-      {/* ══ PREMIUM MODAL ══ */}
-      {showModal && (
-        <div className="nd-modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="nd-modal" onClick={e => e.stopPropagation()}>
-            <div className="nd-modal-icon">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                stroke="#f59e0b" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </div>
-            <h3 className="nd-modal-title">Premium Chapter</h3>
-            <p className="nd-modal-body">
-              Subscribe to unlock <strong>{selectedChapter?.title}</strong> and
-              all other premium chapters.
-            </p>
+        {/* ── RATE TAB ── */}
+        {activeTab === "rate" && (
+          <div className="nd-rate-wrap">
+            <div className="nd-rate-card">
 
-            <div className="nd-modal-plan">
-              <span className="nd-plan-price">$4.99</span>
-              <span className="nd-plan-label">/ month · Cancel anytime</span>
-            </div>
+              {/* header */}
+              <div className="nd-rate-hero">
+                <svg width="40" height="40" viewBox="0 0 24 24"
+                  fill="#f59e0b" stroke="#d97706" strokeWidth="0.5"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <h2 className="nd-rate-title">Rate this novel</h2>
+                <p className="nd-rate-sub">
+                  Your rating helps other readers discover great stories
+                </p>
+              </div>
 
-            <div className="nd-modal-btns">
-              <button className="nd-modal-close" onClick={() => setShowModal(false)}>
-                Not now
-              </button>
-              <button
-                className="nd-modal-subscribe"
-                onClick={handleSubscribe}
-                disabled={subscribing}
-              >
-                {subscribing ? (
-                  <><svg className="spin" width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M21 12a9 9 0 1 1-6.22-8.56"/>
-                  </svg> Subscribing…</>
-                ) : "Subscribe Now →"}
-              </button>
+              {/* current average */}
+              <div className="nd-rate-avg">
+                <span className="nd-rate-avg-num">
+                  {parseFloat(liveRating).toFixed(1)}
+                </span>
+                <div>
+                  <StarDisplay rating={liveRating} count={liveRatingCount}/>
+                  <p className="nd-rate-avg-lbl">
+                    {liveRatingCount === 0
+                      ? "No ratings yet — be the first!"
+                      : `Based on ${liveRatingCount} rating${liveRatingCount > 1 ? "s" : ""}`
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* user picker */}
+              {user ? (
+                <div className="nd-rate-picker-wrap">
+                  <p className="nd-rate-picker-lbl">
+                    {myRating > 0
+                      ? `Your current rating: ${myRating} star${myRating > 1 ? "s" : ""} — tap to change`
+                      : "Tap a star to submit your rating"
+                    }
+                  </p>
+
+                  <StarPicker
+                    value={myRating}
+                    onChange={handleRate}
+                    disabled={ratingLoading}
+                  />
+
+                  {ratingLoading && (
+                    <div className="nd-rate-feedback">
+                      <div className="nd-spin" style={{ width:18, height:18, borderWidth:2 }}/>
+                      Saving…
+                    </div>
+                  )}
+
+                  {ratingFeedback && !ratingLoading && (
+                    <div className={`nd-rate-feedback${ratingFeedback.includes("failed") || ratingFeedback.includes("please") ? " err" : ""}`}>
+                      {ratingFeedback}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="nd-rate-login">
+                  <p>Log in to rate this novel.</p>
+                  <button
+                    className="nd-btn-primary"
+                    onClick={() => navigate("/login")}
+                  >
+                    Log in to rate
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
     </div>
   );
-};
-
-export default NovelDetail;
+}

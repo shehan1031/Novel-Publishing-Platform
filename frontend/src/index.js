@@ -1,14 +1,13 @@
-import React from "react";
+import React    from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import { BrowserRouter } from "react-router-dom";
-
-import { AuthProvider }     from "./context/AuthContext";
-import { LanguageProvider } from "./context/LanguageContext";
-import { NovelProvider }    from "./context/NovelContext";
-import { PointsProvider }   from "./context/PointsContext";
-import { ProgressProvider } from "./context/ProgressContext";
-
+import App      from "./App";
+import { BrowserRouter }        from "react-router-dom";
+import { AuthProvider }         from "./context/AuthContext";
+import { LanguageProvider }     from "./context/LanguageContext";
+import { NovelProvider }        from "./context/NovelContext";
+import { PointsProvider }       from "./context/PointsContext";
+import { ProgressProvider }     from "./context/ProgressContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import "./styles/global.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
@@ -19,9 +18,11 @@ root.render(
         <NovelProvider>
           <PointsProvider>
             <ProgressProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
+              <NotificationProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </NotificationProvider>
             </ProgressProvider>
           </PointsProvider>
         </NovelProvider>

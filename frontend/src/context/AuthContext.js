@@ -1,54 +1,70 @@
 import React, { createContext, useState, useEffect } from "react";
-import { loginUser, signupUser, getCurrentUser, logoutUser } from "../services/authService";
+import {
+  loginUser,
+  signupUser,
+  getCurrentUser,
+  logoutUser,
+} from "../services/authService";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [user,    setUser]    = useState(null);
+  const [token,   setToken]   = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const _save = (data) => {
+    // normalise: backend returns { token, user: {...} }
+    const userData = data.user
+      ? { ...data.user, token: data.token }
+      : { ...data,      token: data.token };
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user",  JSON.stringify(userData));
+    setToken(data.token);
+    setUser(userData);
+    return userData; // ✅ return so callers can read role
+  };
 
   const login = async (credentials) => {
     const data = await loginUser(credentials);
-    localStorage.setItem("token", data.token);
-    setToken(data.token);
-    setUser(data.user);
+    return _save(data);
   };
 
   const signup = async (details) => {
     const data = await signupUser(details);
-    localStorage.setItem("token", data.token);
-    setToken(data.token);
-    setUser(data.user);
+    return _save(data);
   };
 
   const logout = async () => {
-    await logoutUser();
+    try { await logoutUser(); } catch { /* ignore */ }
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setToken(null);
     setUser(null);
   };
 
+  // restore session on page reload
   useEffect(() => {
-    const fetchUser = async () => {
+    const restore = async () => {
       const savedToken = localStorage.getItem("token");
-      if (!savedToken) {
-        setLoading(false);
-        return;
-      }
+      if (!savedToken) { setLoading(false); return; }
       try {
-        const data = await getCurrentUser(savedToken);
+        const data     = await getCurrentUser(savedToken);
+        const userData = { ...data, token: savedToken };
+        localStorage.setItem("user", JSON.stringify(userData));
         setToken(savedToken);
-        setUser(data);
+        setUser(userData);
       } catch {
         localStorage.removeItem("token");
+        localStorage.removeItem("user");
         setUser(null);
         setToken(null);
       } finally {
         setLoading(false);
       }
     };
-    fetchUser();
+    restore();
   }, []);
 
   return (

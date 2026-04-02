@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Novel    = require("../models/Novel");
 
-// POST /api/novels
+/* ── POST /api/novels ── */
 exports.createNovel = async (req, res) => {
   try {
     const novel = await Novel.create({
@@ -20,7 +20,7 @@ exports.createNovel = async (req, res) => {
   }
 };
 
-// GET /api/novels — public, published only ✅
+/* ── GET /api/novels ── public, published only */
 exports.getAllNovels = async (req, res) => {
   try {
     const novels = await Novel.find({ status: "published" })
@@ -34,7 +34,7 @@ exports.getAllNovels = async (req, res) => {
   }
 };
 
-// GET /api/novels/:novelId
+/* ── GET /api/novels/:novelId ── */
 exports.getNovelById = async (req, res) => {
   try {
     const { novelId } = req.params;
@@ -54,7 +54,7 @@ exports.getNovelById = async (req, res) => {
   }
 };
 
-// GET /api/author/novels — author's own novels, all statuses ✅
+/* ── GET /api/author/novels ── author's own novels */
 exports.getAuthorNovels = async (req, res) => {
   try {
     const novels = await Novel.find({ author: req.user.id })
@@ -68,13 +68,15 @@ exports.getAuthorNovels = async (req, res) => {
   }
 };
 
-// PUT /api/novels/:novelId
+/* ── PUT /api/novels/:novelId ── */
 exports.updateNovel = async (req, res) => {
   try {
     const { novelId } = req.params;
     const novel = await Novel.findById(novelId);
     if (!novel) return res.status(404).json({ message: "Novel not found" });
-    if (novel.author.toString() !== req.user.id)
+
+    // admin can also update
+    if (novel.author.toString() !== req.user.id && req.user.role !== "admin")
       return res.status(403).json({ message: "Not authorized" });
 
     const { title, description, genre, language, status } = req.body;
@@ -93,14 +95,16 @@ exports.updateNovel = async (req, res) => {
   }
 };
 
-// DELETE /api/novels/:novelId
+/* ── DELETE /api/novels/:novelId ── */
 exports.deleteNovel = async (req, res) => {
   try {
     const { novelId } = req.params;
     const novel = await Novel.findById(novelId);
     if (!novel) return res.status(404).json({ message: "Novel not found" });
-    if (novel.author.toString() !== req.user.id)
+
+    if (novel.author.toString() !== req.user.id && req.user.role !== "admin")
       return res.status(403).json({ message: "Not authorized" });
+
     await novel.deleteOne();
     res.json({ message: "Novel deleted" });
   } catch (err) {
@@ -109,7 +113,7 @@ exports.deleteNovel = async (req, res) => {
   }
 };
 
-// POST /api/novels/:novelId/view
+/* ── POST /api/novels/:novelId/view ── */
 exports.incrementView = async (req, res) => {
   try {
     const { novelId } = req.params;
