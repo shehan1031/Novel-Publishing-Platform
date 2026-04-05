@@ -8,9 +8,6 @@ import { getCommentsByChapter, addCommentToChapter } from "../services/commentSe
 import API from "../services/api";
 import "../styles/novelReader.css";
 
-const API_BASE = (process.env.REACT_APP_API_URL || "http://localhost:5000/api")
-  .replace("/api", "");
-
 const timeAgo = (date) => {
   const s = Math.floor((Date.now() - new Date(date)) / 1000);
   if (s < 60)    return "just now";
@@ -18,9 +15,18 @@ const timeAgo = (date) => {
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
 };
+const initials = (n = "") =>
+  n.split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
 
-const initials = (name = "") =>
-  name.split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
+const THEMES = [
+  { key:"dark",     label:"Dark",     bg:"#080c14", surface:"#0d1120", tx:"#e2e8f0", sub:"#94a3b8", muted:"#475569", border:"rgba(255,255,255,0.08)", barBg:"rgba(30,35,55,0.96)"    },
+  { key:"light",    label:"Light",    bg:"#ffffff", surface:"#f5f5f5", tx:"#111827", sub:"#555",    muted:"#999",    border:"rgba(0,0,0,0.1)",        barBg:"rgba(255,255,255,0.96)" },
+  { key:"sepia",    label:"Sepia",    bg:"#f5efe6", surface:"#ede5d8", tx:"#3b2d1f", sub:"#6b5343", muted:"#9c8370", border:"rgba(0,0,0,0.1)",        barBg:"rgba(235,225,210,0.97)" },
+  { key:"forest",   label:"Forest",   bg:"#0d1a0f", surface:"#162218", tx:"#d4edda", sub:"#8aac8e", muted:"#4a6b50", border:"rgba(255,255,255,0.08)", barBg:"rgba(15,28,18,0.96)"   },
+  { key:"midnight", label:"Midnight", bg:"#0a0a1a", surface:"#10102a", tx:"#d0d0f0", sub:"#8080c0", muted:"#404070", border:"rgba(255,255,255,0.08)", barBg:"rgba(12,12,28,0.97)"   },
+  { key:"rose",     label:"Rose",     bg:"#1a0d10", surface:"#261318", tx:"#f0d4d8", sub:"#c08090", muted:"#6b4050", border:"rgba(255,255,255,0.08)", barBg:"rgba(28,14,18,0.97)"   },
+  { key:"paper",    label:"Paper",    bg:"#f2f0eb", surface:"#e8e5de", tx:"#2c2c2c", sub:"#666",    muted:"#aaa",    border:"rgba(0,0,0,0.1)",        barBg:"rgba(240,238,232,0.97)" },
+];
 
 export default function NovelReader() {
   const { novelId, chapterId } = useParams();
@@ -35,23 +41,40 @@ export default function NovelReader() {
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError,   setCommentError]   = useState("");
   const [showNav,        setShowNav]        = useState(false);
+  const [showSettings,   setShowSettings]   = useState(false);
   const [fontSize,       setFontSize]       = useState(17);
+  const [lineHeight,     setLineHeight]     = useState(1.9);
+  const [theme,          setTheme]          = useState("dark");
+  const [liked,          setLiked]          = useState(false);
+  const [likeCount,      setLikeCount]      = useState(0);
+  const [bookmarked,     setBookmarked]     = useState(false);
+  const [scrollPct,      setScrollPct]      = useState(0);
   const [mounted,        setMounted]        = useState(false);
+  const [shareToast,     setShareToast]     = useState(false);
+
   const progressTimerRef = useRef(null);
+  const settingsRef      = useRef(null);
 
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  /* ── fetch novel ── */
+  useEffect(() => {
+    const h = (e) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target))
+        setShowSettings(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const res = await API.get(`/novels/${novelId}`);
         setNovel(res.data);
-        // ✅ correct endpoint
         API.post(`/novels/${novelId}/view`).catch(() => {});
       } catch (err) {
-        console.error("Failed to load novel:", err.message);
+        console.error(err.message);
       } finally {
         setLoading(false);
       }
@@ -59,25 +82,30 @@ export default function NovelReader() {
     load();
   }, [novelId]);
 
-  /* ── fetch comments via commentService ── */
+  useEffect(() => {
+    if (!token || !novelId) return;
+    API.get(`/bookmarks/${novelId}/check`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => setBookmarked(r.data.bookmarked || false)).catch(() => {});
+  }, [token, novelId]);
+
   const loadComments = useCallback(async () => {
     if (!chapterId) return;
     try {
       const data = await getCommentsByChapter(chapterId);
       setComments(data);
+      setLikeCount(data.length || 0);
     } catch (err) {
-      console.error("Failed to load comments:", err.message);
+      console.error(err.message);
     }
   }, [chapterId]);
 
   useEffect(() => { loadComments(); }, [loadComments]);
 
-  /* ── reading history ── */
   useEffect(() => {
     if (token) fetchReadingHistory();
   }, [token]);
 
-  /* ── restore scroll from saved progress ── */
   useEffect(() => {
     if (!readingHistory?.length || !chapterId) return;
     const record = readingHistory.find(r =>
@@ -92,20 +120,23 @@ export default function NovelReader() {
     }
   }, [readingHistory, chapterId]);
 
-  /* ── save progress on scroll (throttled) ── */
   useEffect(() => {
-    if (!user || !chapterId) return;
+    if (!chapterId) return;
     const handleScroll = () => {
-      clearTimeout(progressTimerRef.current);
-      progressTimerRef.current = setTimeout(() => {
-        const scrollTop  = window.scrollY;
-        const wH         = window.innerHeight;
-        const dH         = document.body.scrollHeight;
-        const scrollable = dH - wH;
-        if (scrollable <= 0) return;
-        const progress = Math.min(100, Math.round((scrollTop / scrollable) * 100));
-        saveProgress(chapterId, progress).catch(() => {});
-      }, 800);
+      const st = window.scrollY;
+      const wH = window.innerHeight;
+      const dH = document.body.scrollHeight;
+      const s  = dH - wH;
+      if (s > 0) {
+        const pct = Math.min(100, Math.round((st / s) * 100));
+        setScrollPct(pct);
+        if (user) {
+          clearTimeout(progressTimerRef.current);
+          progressTimerRef.current = setTimeout(() => {
+            saveProgress(chapterId, pct).catch(() => {});
+          }, 800);
+        }
+      }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
@@ -114,13 +145,35 @@ export default function NovelReader() {
     };
   }, [chapterId, user, saveProgress]);
 
-  /* ── post comment via commentService ── */
+  const handleBookmark = async () => {
+    if (!user) { navigate("/login"); return; }
+    try {
+      if (bookmarked) {
+        await API.delete(`/bookmarks/${novelId}`, { headers: { Authorization: `Bearer ${token}` } });
+        setBookmarked(false);
+      } else {
+        await API.post(`/bookmarks/${novelId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+        setBookmarked(true);
+      }
+    } catch (err) { console.error(err.message); }
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({ title: chapter?.title, url: window.location.href });
+    } else {
+      navigator.clipboard?.writeText(window.location.href).then(() => {
+        setShareToast(true);
+        setTimeout(() => setShareToast(false), 2000);
+      });
+    }
+  };
+
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     setCommentError("");
     if (!newComment.trim()) return;
     if (!token) { setCommentError("Please log in to comment."); return; }
-
     setCommentLoading(true);
     try {
       const posted = await addCommentToChapter(chapterId, newComment.trim());
@@ -133,9 +186,20 @@ export default function NovelReader() {
     }
   };
 
-  /* ── guards ── */
+  const T = THEMES.find(t => t.key === theme) || THEMES[0];
+
+  const cssVars = {
+    "--nr-bg":      T.bg,
+    "--nr-surface": T.surface,
+    "--nr-tx":      T.tx,
+    "--nr-sub":     T.sub,
+    "--nr-muted":   T.muted,
+    "--nr-border":  T.border,
+    "--nr-bar-bg":  T.barBg,
+  };
+
   if (loading) return (
-    <div className="nr-loading">
+    <div className="nr-loading" style={{ background: T.bg, color: T.muted }}>
       <div className="nr-spin"/>
       <p>Loading chapter…</p>
     </div>
@@ -144,8 +208,7 @@ export default function NovelReader() {
 
   const chapters     = novel.chapters || [];
   const currentIndex = chapters.findIndex(c => c._id === chapterId);
-  if (currentIndex === -1)
-    return <div className="nr-loading"><p>Chapter not found.</p></div>;
+  if (currentIndex === -1) return <div className="nr-loading"><p>Chapter not found.</p></div>;
 
   const chapter = chapters[currentIndex];
   const hasPrev = currentIndex > 0;
@@ -153,7 +216,18 @@ export default function NovelReader() {
   const goTo    = (idx) => navigate(`/novel/${novelId}/chapter/${chapters[idx]._id}`);
 
   return (
-    <div className={`nr-shell${mounted ? " in" : ""}`}>
+    <div
+      className={`nr-shell${mounted ? " in" : ""}`}
+      data-theme={theme}
+      style={cssVars}
+    >
+      {/* scroll progress line at very top */}
+      <div className="nr-scroll-bar">
+        <div className="nr-scroll-fill" style={{ width: `${scrollPct}%` }}/>
+      </div>
+
+      {/* share toast */}
+      {shareToast && <div className="nr-share-toast">Link copied!</div>}
 
       {/* ══ TOP BAR ══ */}
       <header className="nr-topbar">
@@ -173,11 +247,63 @@ export default function NovelReader() {
         </div>
 
         <div className="nr-topbar-right">
-          <div className="nr-font-ctrl">
-            <button onClick={() => setFontSize(s => Math.max(13, s - 1))}>A−</button>
-            <span>{fontSize}px</span>
-            <button onClick={() => setFontSize(s => Math.min(24, s + 1))}>A+</button>
+          {/* settings */}
+          <div className="nr-settings-wrap" ref={settingsRef}>
+            <button
+              className={`nr-icon-btn${showSettings ? " active" : ""}`}
+              onClick={() => setShowSettings(v => !v)}
+              title="Reading settings"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+
+            {showSettings && (
+              <div className="nr-settings-panel">
+                <div className="nr-settings-section">
+                  <span className="nr-settings-label">Font size</span>
+                  <div className="nr-stepper">
+                    <button onClick={() => setFontSize(s => Math.max(13, s - 1))}>−</button>
+                    <span>{fontSize}px</span>
+                    <button onClick={() => setFontSize(s => Math.min(26, s + 1))}>+</button>
+                  </div>
+                </div>
+                <div className="nr-settings-section">
+                  <span className="nr-settings-label">Line spacing</span>
+                  <div className="nr-stepper">
+                    <button onClick={() => setLineHeight(v => Math.max(1.4, +((v - 0.1).toFixed(1))))}>−</button>
+                    <span>{lineHeight.toFixed(1)}</span>
+                    <button onClick={() => setLineHeight(v => Math.min(2.6, +((v + 0.1).toFixed(1))))}>+</button>
+                  </div>
+                </div>
+                <div className="nr-settings-section">
+                  <span className="nr-settings-label">Theme</span>
+                  <div className="nr-theme-grid">
+                    {THEMES.map(t => (
+                      <button
+                        key={t.key}
+                        className={`nr-theme-swatch${theme === t.key ? " active" : ""}`}
+                        style={{
+                          background: t.bg,
+                          color: t.tx,
+                          borderColor: theme === t.key ? "#3b82f6" : t.border,
+                        }}
+                        onClick={() => setTheme(t.key)}
+                      >
+                        <span className="nr-swatch-dot" style={{ background: t.tx }}/>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
           <button className="nr-chapters-btn" onClick={() => setShowNav(v => !v)}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2"
@@ -194,7 +320,7 @@ export default function NovelReader() {
         <div className="nr-nav-drawer" onClick={() => setShowNav(false)}>
           <div className="nr-nav-panel" onClick={e => e.stopPropagation()}>
             <div className="nr-nav-head">
-              <span>All Chapters</span>
+              <span>All Chapters ({chapters.length})</span>
               <button onClick={() => setShowNav(false)}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2.5"
@@ -226,11 +352,8 @@ export default function NovelReader() {
       {/* ══ MAIN ══ */}
       <main className="nr-main">
 
-        {/* chapter header */}
         <div className="nr-chapter-head">
-          <p className="nr-chapter-meta">
-            Chapter {currentIndex + 1} of {chapters.length}
-          </p>
+          <p className="nr-chapter-meta">Chapter {currentIndex + 1} of {chapters.length}</p>
           <h1 className="nr-chapter-title">{chapter.title}</h1>
           <p className="nr-novel-sub">
             {novel.title}
@@ -238,16 +361,10 @@ export default function NovelReader() {
           </p>
         </div>
 
-        {/* progress indicator */}
-        <div className="nr-progress-bar">
-          <div
-            className="nr-progress-fill"
-            style={{ width: `${((currentIndex + 1) / chapters.length) * 100}%` }}
-          />
-        </div>
-
-        {/* chapter text */}
-        <article className="nr-content" style={{ fontSize: `${fontSize}px` }}>
+        <article
+          className="nr-content"
+          style={{ fontSize: `${fontSize}px`, lineHeight }}
+        >
           {(chapter.content || "").split("\n").map((para, i) =>
             para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
           )}
@@ -265,19 +382,15 @@ export default function NovelReader() {
               strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6"/>
             </svg>
-            Previous chapter
+            Previous
           </button>
-
-          <div className="nr-chapter-pos">
-            {currentIndex + 1} / {chapters.length}
-          </div>
-
+          <div className="nr-chapter-pos">{currentIndex + 1} / {chapters.length}</div>
           <button
             className={`nr-nav-btn next${hasNext ? "" : " disabled"}`}
             onClick={() => hasNext && goTo(currentIndex + 1)}
             disabled={!hasNext}
           >
-            Next chapter
+            Next
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.2"
               strokeLinecap="round" strokeLinejoin="round">
@@ -297,21 +410,17 @@ export default function NovelReader() {
 
           {user ? (
             <form className="nr-comment-form" onSubmit={handleCommentSubmit}>
-              <div className="nr-comment-avatar">
-                {initials(user.name || user.email)}
-              </div>
+              <div className="nr-comment-avatar">{initials(user.name || user.email)}</div>
               <div className="nr-comment-input-wrap">
                 <textarea
                   className="nr-comment-textarea"
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
-                  placeholder="Share your thoughts on this chapter…"
+                  placeholder="Share your thoughts…"
                   rows={3}
                   maxLength={2000}
                 />
-                {commentError && (
-                  <p className="nr-comment-err">{commentError}</p>
-                )}
+                {commentError && <p className="nr-comment-err">{commentError}</p>}
                 <div className="nr-comment-form-foot">
                   <span className="nr-char-count">{newComment.length}/2000</span>
                   <button
@@ -366,7 +475,64 @@ export default function NovelReader() {
           )}
         </section>
 
+        {/* spacer so content isn't hidden behind floating pill */}
+        <div style={{ height: 80 }}/>
       </main>
+
+      {/* ══ FLOATING PILL BAR — centered, like the reference ══ */}
+      <div className="nr-pill-bar">
+        {/* like */}
+        <button
+          className={`nr-pill-btn${liked ? " liked" : ""}`}
+          onClick={() => { setLiked(v => !v); setLikeCount(c => liked ? c - 1 : c + 1); }}
+          title="Like"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill={liked ? "currentColor" : "none"}
+            stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span>{likeCount}</span>
+        </button>
+
+        <div className="nr-pill-sep"/>
+
+        {/* bookmark */}
+        <button
+          className={`nr-pill-btn${bookmarked ? " bookmarked" : ""}`}
+          onClick={handleBookmark}
+          title={bookmarked ? "Remove bookmark" : "Bookmark"}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill={bookmarked ? "currentColor" : "none"}
+            stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round">
+            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+          </svg>
+        </button>
+
+        <div className="nr-pill-sep"/>
+
+        {/* share */}
+        <button className="nr-pill-btn" onClick={handleShare} title="Share">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
+
+        <div className="nr-pill-sep"/>
+
+        {/* scroll % */}
+        <span className="nr-pill-pct">{scrollPct}%</span>
+      </div>
+
     </div>
   );
 }

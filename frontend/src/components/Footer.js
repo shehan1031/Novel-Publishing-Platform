@@ -1,32 +1,25 @@
-import React, { useContext } from "react";
-import { LanguageContext } from "../context/LanguageContext";
-import "../styles/footer.css"; // make sure the upgraded CSS is applied
+import React from "react";
+import { useLang } from "../context/LanguageContext";
+import "../styles/footer.css";
 
 const Footer = () => {
-  const { language } = useContext(LanguageContext);
-  const year = new Date().getFullYear();
+  const { t } = useLang();
 
-  const footerText = {
-    en: `© ${year} NovelPlatform. All rights reserved.`,
-    si: `© ${year} NovelPlatform. සියලුම අයිතිවාසිකම් ඇවිරිණි.`,
-    ta: `© ${year} NovelPlatform. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.`
-  };
-
-  const footerLinks = [
-    { label: { en: "About", si: "අප ගැන", ta: "பற்றி" }, url: "/about" },
-    { label: { en: "Terms", si: "නියමයන්", ta: "விதிமுறைகள்" }, url: "/terms" },
-    { label: { en: "Privacy", si: "පෞද්ගලිකත්වය", ta: "தனியுரிமை" }, url: "/privacy" },
-    { label: { en: "Contact", si: "සම්බන්ධ වන්න", ta: "தொடர்பு" }, url: "/contact" },
+  const links = [
+    { key: "footer_about",   url: "/about"   },
+    { key: "footer_terms",   url: "/terms"   },
+    { key: "footer_privacy", url: "/privacy" },
+    { key: "footer_contact", url: "/contact" },
   ];
 
   return (
-    <footer className={`footer lang-${language}`}>
+    <footer className="footer">
       <div className="footer-content">
-        <p className="footer-text">{footerText[language]}</p>
+        <p className="footer-text">{t("footer_copy")}</p>
         <div className="footer-links">
-          {footerLinks.map((link, index) => (
-            <a key={index} href={link.url} className="footer-link">
-              {link.label[language]}
+          {links.map(link => (
+            <a key={link.key} href={link.url} className="footer-link">
+              {t(link.key)}
             </a>
           ))}
         </div>
