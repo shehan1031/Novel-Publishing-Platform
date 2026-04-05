@@ -1,0 +1,60 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-check:
+    name: PR quick validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: No .env files in PR
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD \
+               | grep -E "(^|/)\.env($|\.)" > /dev/null 2>&1; then
+            echo "❌ .env file found in PR — remove before merging"
+            exit 1
+          fi
+          echo "✅ No .env files"
+
+      - name: No merge conflict markers
+        run: |
+          CONFLICTS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            | xargs grep -l "^<<<<<<<\|^>>>>>>>\|^=======$" 2>/dev/null || true)
+          if [ -n "$CONFLICTS" ]; then
+            echo "❌ Unresolved merge conflicts in:"
+            echo "$CONFLICTS"
+            exit 1
+          fi
+          echo "✅ No conflict markers"
+
+      - name: No large files (>2 MB)
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            | while read f; do
+                [ -f "$f" ] || continue
+                SIZE=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null)
+                [ "$SIZE" -gt 2097152 ] && echo "⚠️  Large file: $f ($(($SIZE/1024))KB)"
+              done
+          echo "✅ File size check done"
+
+      - name: PR title convention
+        run: |
+          T="${{ github.event.pull_request.title }}"
+          echo "Title: $T"
+          echo "$T" | grep -qE "^(feat|fix|chore|docs|style|refactor|test|ci|i18n|perf|revert)(\(.+\))?: .+" \
+            && echo "✅ Conventional commit format" \
+            || echo "⚠️  Suggested format: feat/fix/i18n/chore: description"
+
+      - name: Changed files summary
+        run: |
+          TOTAL=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          echo "Files changed: $TOTAL"
+          git diff --name-only origin/${{ github.base_ref }}...HEAD | head -20

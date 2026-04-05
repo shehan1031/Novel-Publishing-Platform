@@ -1,6 +1,27 @@
-node_modules/
+# env — never commit
 .env
-build/
-dist/
-coverage/
+.env.*
+backend/.env
+frontend/.env
+
+# deps
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# build
+frontend/build/
+
+# uploads — keep folder, ignore files
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / IDE
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/

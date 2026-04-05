@@ -1,0 +1,324 @@
+name: Navella CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+# ═══════════════════════════════════════
+#  BACKEND
+# ═══════════════════════════════════════
+  backend:
+    name: Backend — lint & check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Create test .env
+        run: |
+          cat > .env << 'EOF'
+          PORT=5000
+          MONGO_URI=mongodb://localhost:27017/novelDB_test
+          JWT_SECRET=ci-test-secret-navella-2025
+          PAYHERE_MERCHANT_ID=test_merchant_id
+          PAYHERE_MERCHANT_SECRET=test_merchant_secret
+          FRONTEND_URL=http://localhost:3000
+          NODE_ENV=test
+          EOF
+
+      - name: ESLint
+        run: npx eslint src/ --ext .js --max-warnings 0
+
+      - name: Syntax check all JS files
+        run: |
+          echo "Checking all .js files for syntax errors..."
+          ERRORS=0
+          while IFS= read -r f; do
+            if ! node --check "$f" 2>/dev/null; then
+              echo "❌  $f"
+              ERRORS=$((ERRORS+1))
+            fi
+          done < <(find src -name "*.js")
+          if [ $ERRORS -gt 0 ]; then
+            echo "$ERRORS file(s) failed syntax check"
+            exit 1
+          fi
+          echo "✅ All backend files OK"
+
+      - name: Validate env vars are used
+        run: |
+          for VAR in MONGO_URI JWT_SECRET PAYHERE_MERCHANT_ID PAYHERE_MERCHANT_SECRET; do
+            grep -r "$VAR" src/ > /dev/null 2>&1 \
+              && echo "✅ $VAR referenced" \
+              || echo "⚠️  $VAR not found in src/"
+          done
+
+      - name: Scan for hardcoded secrets
+        run: |
+          FOUND=0
+          for P in "password123" "supersecret" "admin123" "test1234" "12345678"; do
+            grep -r "$P" src/ --include="*.js" > /dev/null 2>&1 \
+              && echo "⚠️  Possible hardcoded secret: $P" \
+              && FOUND=1 \
+              || true
+          done
+          [ $FOUND -eq 0 ] && echo "✅ No obvious hardcoded secrets"
+
+      - name: Required models exist
+        run: |
+          for M in User Novel Chapter Transaction Notification Bookmark ReadingProgress PointTransaction Rating; do
+            find src/models -name "${M}.js" | grep -q . \
+              && echo "✅ $M" \
+              || { echo "❌ Missing model: $M"; exit 1; }
+          done
+
+      - name: Required controllers exist
+        run: |
+          for C in authController novelController chapterController adminController \
+                   authorController pointsController notificationController \
+                   bookmarkController progressController ratingController; do
+            find src/controllers -name "${C}.js" | grep -q . \
+              && echo "✅ $C" \
+              || { echo "❌ Missing controller: $C"; exit 1; }
+          done
+
+      - name: Check key deps are installed
+        run: |
+          for PKG in express mongoose jsonwebtoken bcryptjs cors dotenv multer; do
+            node -e "require('$PKG')" 2>/dev/null \
+              && echo "✅ $PKG" \
+              || { echo "❌ $PKG not found"; exit 1; }
+          done
+
+# ═══════════════════════════════════════
+#  FRONTEND
+# ═══════════════════════════════════════
+  frontend:
+    name: Frontend — lint, i18n & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Create test .env
+        run: |
+          echo "REACT_APP_API_URL=http://localhost:5000/api" > .env
+
+      - name: ESLint
+        run: npx eslint src/ --ext .js,.jsx --max-warnings 10
+
+      - name: i18n completeness check
+        run: |
+          node - << 'SCRIPT'
+          const fs   = require("fs");
+          const path = require("path");
+
+          const file = path.join("src","i18n","translations.js");
+          if (!fs.existsSync(file)) {
+            console.log("⚠️  src/i18n/translations.js not found — skipping");
+            process.exit(0);
+          }
+
+          let src = fs.readFileSync(file, "utf8").replace(/export default\s+\w+;?/, "");
+          let translations;
+          try {
+            translations = new Function(src + "\nreturn translations;")();
+          } catch(e) {
+            console.log("⚠️  Could not parse translations.js:", e.message);
+            process.exit(0);
+          }
+
+          const langs  = Object.keys(translations);
+          const enKeys = Object.keys(translations.en || {});
+          console.log("Languages:", langs.join(", "));
+          console.log("English keys:", enKeys.length);
+
+          let hasWarning = false;
+          for (const lang of langs) {
+            if (lang === "en") continue;
+            const missing = enKeys.filter(k => !translations[lang]?.[k]);
+            if (missing.length) {
+              console.log(`\n⚠️  [${lang}] missing ${missing.length} keys:`);
+              missing.slice(0,10).forEach(k => console.log("   -", k));
+              if (missing.length > 10) console.log(`   ...and ${missing.length - 10} more`);
+              hasWarning = true;
+            } else {
+              console.log(`✅ [${lang}] all ${Object.keys(translations[lang]).length} keys present`);
+            }
+          }
+          if (!hasWarning) console.log("\n✅ All translations complete");
+          SCRIPT
+
+      - name: Translation hook usage check
+        run: |
+          echo "Checking useLang() usage in key files..."
+          FILES=(
+            "src/pages/Home.js"
+            "src/components/Navbar.js"
+            "src/components/NotificationBell.js"
+            "src/components/BookmarkButton.js"
+            "src/components/ChapterList.js"
+            "src/components/Footer.js"
+            "src/pages/ChapterManager.js"
+          )
+          for F in "${FILES[@]}"; do
+            if [ ! -f "$F" ]; then
+              echo "⚠️  Not found: $F"
+              continue
+            fi
+            if grep -q "useLang\b" "$F"; then
+              echo "✅ $(basename $F)"
+            else
+              echo "⚠️  $(basename $F) — useLang not found"
+            fi
+          done
+
+      - name: Required contexts exist
+        run: |
+          for C in AuthContext LanguageContext NovelContext PointsContext \
+                   ProgressContext NotificationContext; do
+            find src/context -name "${C}.js" | grep -q . \
+              && echo "✅ $C" \
+              || { echo "❌ Missing: $C"; exit 1; }
+          done
+
+      - name: Required services exist
+        run: |
+          for S in api.js novelService.js bookmarkService.js \
+                   progressService.js authService.js commentService.js chapterService.js; do
+            find src/services -name "$S" | grep -q . \
+              && echo "✅ $S" \
+              || { echo "❌ Missing: $S"; exit 1; }
+          done
+
+      - name: i18n translations file exists
+        run: |
+          [ -f src/i18n/translations.js ] \
+            && echo "✅ translations.js found" \
+            || { echo "❌ src/i18n/translations.js missing"; exit 1; }
+
+      - name: console.log count
+        run: |
+          COUNT=$(grep -r "console\.log" src/pages/ src/components/ \
+                  --include="*.js" --include="*.jsx" 2>/dev/null | wc -l)
+          echo "console.log calls in pages+components: $COUNT"
+          [ "$COUNT" -le 30 ] \
+            && echo "✅ Within acceptable range" \
+            || echo "⚠️  Consider removing debug logs before production"
+
+      - name: Run tests
+        run: npm test -- --watchAll=false --passWithNoTests
+        env:
+          CI: true
+          REACT_APP_API_URL: http://localhost:5000/api
+
+      - name: Production build
+        run: npm run build
+        env:
+          CI: false
+          REACT_APP_API_URL: http://localhost:5000/api
+          GENERATE_SOURCEMAP: false
+
+      - name: Build size report
+        run: |
+          echo "Build size: $(du -sh build/ | cut -f1)"
+          echo "JS chunks:"
+          ls -lh build/static/js/*.js 2>/dev/null | awk '{print $5, $9}' | head -5
+          echo "CSS chunks:"
+          ls -lh build/static/css/*.css 2>/dev/null | awk '{print $5, $9}' | head -3
+          echo "✅ Build complete"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: navella-frontend-${{ github.sha }}
+          path: frontend/build/
+          retention-days: 7
+
+# ═══════════════════════════════════════
+#  DEPLOY GATE
+# ═══════════════════════════════════════
+  deploy-gate:
+    name: Deploy gate
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Summary
+        run: |
+          echo "================================================"
+          echo "✅  Navella CI passed"
+          echo "    Commit : ${{ github.sha }}"
+          echo "    Actor  : ${{ github.actor }}"
+          echo "    Time   : $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "================================================"
+
+      # Uncomment ONE when ready to deploy:
+
+      # ── Option A: Render (backend) ──────────────────
+      # - name: Deploy backend → Render
+      #   run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
+      # ── Option B: Railway ───────────────────────────
+      # - name: Deploy → Railway
+      #   uses: bervProject/railway-deploy@main
+      #   with:
+      #     railway_token: ${{ secrets.RAILWAY_TOKEN }}
+      #     service: navella-backend
+
+      # ── Option C: VPS via SSH ───────────────────────
+      # - name: Deploy → VPS
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host:     ${{ secrets.VPS_HOST }}
+      #     username: ${{ secrets.VPS_USER }}
+      #     key:      ${{ secrets.VPS_SSH_KEY }}
+      #     script: |
+      #       cd /var/www/navella
+      #       git pull origin main
+      #       cd backend && npm ci --omit=dev && pm2 restart navella-api
+      #       cd ../frontend && npm ci && npm run build
+      #       pm2 restart navella-frontend || true
+
+      # ── Option D: Vercel (frontend) ─────────────────
+      # - name: Deploy frontend → Vercel
+      #   uses: amondnet/vercel-action@v25
+      #   with:
+      #     vercel-token:      ${{ secrets.VERCEL_TOKEN }}
+      #     vercel-org-id:     ${{ secrets.VERCEL_ORG_ID }}
+      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+      #     working-directory: frontend
