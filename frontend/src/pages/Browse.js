@@ -1,21 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import NovelCard from "../components/NovelCard";
 import { getAllNovels } from "../services/novelService";
+import { useLang } from "../context/LanguageContext";
 import "../styles/browse.css";
-
-/* ─── constants ─── */
-const GENRES = [
-  "All", "Fantasy", "Romance", "Action",
-  "Sci-Fi", "Horror", "Mystery", "Thriller",
-];
-
-const LANGUAGES = ["All", "Sinhala", "Tamil", "English"];
-
-const SORTS = [
-  { label: "Latest",  value: "latest"  },
-  { label: "A – Z",   value: "az"      },
-  { label: "Popular", value: "popular" },
-];
 
 /* ─── icons ─── */
 const IconSearch = () => (
@@ -38,7 +25,8 @@ const IconGrid = () => (
 );
 const IconList = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-    <line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/>
+    <line x1="3" y1="6"  x2="21" y2="6"/>
+    <line x1="3" y1="12" x2="21" y2="12"/>
     <line x1="3" y1="18" x2="21" y2="18"/>
   </svg>
 );
@@ -46,7 +34,7 @@ const IconAlert = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/>
-    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="8"  x2="12"   y2="12"/>
     <line x1="12" y1="16" x2="12.01" y2="16"/>
   </svg>
 );
@@ -62,16 +50,33 @@ const IconBook = () => (
    BROWSE PAGE
 ════════════════════════════════════════ */
 const Browse = () => {
+  const { t } = useLang();
+
+  /* ── translated constants — rebuilt when lang changes ── */
+  const ALL_GENRES = [
+    t("browse_all"), "Fantasy", "Romance", "Action",
+    "Sci-Fi", "Horror", "Mystery", "Thriller",
+  ];
+  const ALL_LANGUAGES = [t("browse_all"), "Sinhala", "Tamil", "English"];
+  const SORTS = [
+    { label: t("browse_sort_latest"),  value: "latest"  },
+    { label: t("browse_sort_az"),      value: "az"      },
+    { label: t("browse_sort_popular"), value: "popular" },
+  ];
+
+  /* helper — is a value the "All" sentinel across all three languages */
+  const ALL_VALS = ["All", "සියල්ල", "அனைத்தும்"];
+  const isAll = (v) => ALL_VALS.includes(v);
+
   const [allNovels, setAllNovels] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState("");
-
-  const [search,   setSearch]   = useState("");
-  const [query,    setQuery]    = useState("");
-  const [genre,    setGenre]    = useState("All");
-  const [language, setLanguage] = useState("All");
-  const [sort,     setSort]     = useState("latest");
-  const [viewMode, setViewMode] = useState("grid");
+  const [search,    setSearch]    = useState("");
+  const [query,     setQuery]     = useState("");
+  const [genre,     setGenre]     = useState(ALL_VALS[0]);
+  const [language,  setLanguage]  = useState(ALL_VALS[0]);
+  const [sort,      setSort]      = useState("latest");
+  const [viewMode,  setViewMode]  = useState("grid");
 
   const debounceRef = useRef(null);
 
@@ -85,7 +90,7 @@ const Browse = () => {
         setAllNovels(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Failed to fetch novels:", err);
-        setError("Failed to load novels. Please try again.");
+        setError(t("browse_load_error"));
       } finally {
         setLoading(false);
       }
@@ -114,10 +119,10 @@ const Browse = () => {
       );
     }
 
-    if (genre !== "All")
+    if (!isAll(genre))
       result = result.filter(n => n.genre?.toLowerCase() === genre.toLowerCase());
 
-    if (language !== "All")
+    if (!isAll(language))
       result = result.filter(n => n.language?.toLowerCase() === language.toLowerCase());
 
     if (sort === "latest")
@@ -133,27 +138,26 @@ const Browse = () => {
   /* helpers */
   const clearFilters = () => {
     setSearch(""); setQuery("");
-    setGenre("All"); setLanguage("All");
+    setGenre(ALL_VALS[0]); setLanguage(ALL_VALS[0]);
     setSort("latest");
   };
 
-  const hasFilters = query || genre !== "All" || language !== "All" || sort !== "latest";
+  const hasFilters = query || !isAll(genre) || !isAll(language) || sort !== "latest";
 
   const activePills = [
-    genre    !== "All" && { key: "genre",    label: genre    },
-    language !== "All" && { key: "language", label: language },
-    query              && { key: "query",    label: `"${query}"` },
+    !isAll(genre)    && { key: "genre",    label: genre    },
+    !isAll(language) && { key: "language", label: language },
+    query            && { key: "query",    label: `"${query}"` },
   ].filter(Boolean);
 
   const removeFilter = (key) => {
-    if (key === "genre")    setGenre("All");
-    if (key === "language") setLanguage("All");
+    if (key === "genre")    setGenre(ALL_VALS[0]);
+    if (key === "language") setLanguage(ALL_VALS[0]);
     if (key === "query")    { setSearch(""); setQuery(""); }
   };
 
   const skels = Array.from({ length: 12 });
 
-  /* ── render ── */
   return (
     <div className="bp">
 
@@ -161,34 +165,37 @@ const Browse = () => {
       <div className="bp-hero">
         <div className="bp-hero-inner">
 
-          {/* live badge */}
           <p className="bp-badge">
             <span className="bp-badge-dot"/>
             {loading
-              ? "Loading novels…"
-              : `${novels.length} novel${novels.length !== 1 ? "s" : ""} available`}
+              ? t("loading")
+              : `${novels.length} ${novels.length !== 1
+                  ? t("browse_novels_available_pl")
+                  : t("browse_novels_available")}`}
           </p>
 
           <h1 className="bp-heading">
-            Discover your<br/><em>next great read</em>
+            {t("browse_heading_1")}<br/><em>{t("browse_heading_2")}</em>
           </h1>
-          <p className="bp-subheading">
-            Browse our curated collection of novels across every genre and language
-          </p>
+          <p className="bp-subheading">{t("browse_subheading")}</p>
 
-          {/* search */}
           <div className="bp-search-wrap">
             <span className="bp-search-icon"><IconSearch/></span>
             <input
               className="bp-search"
               type="text"
-              placeholder="Search by title, author, or description…"
+              placeholder={t("browse_search_ph")}
               value={search}
               onChange={e => handleSearch(e.target.value)}
               autoComplete="off"
+              aria-label={t("browse_search_ph")}
             />
             {search && (
-              <button className="bp-search-clear" onClick={() => handleSearch("")} aria-label="Clear">
+              <button
+                className="bp-search-clear"
+                onClick={() => handleSearch("")}
+                aria-label={t("browse_clear_search")}
+              >
                 <IconX size={12}/>
               </button>
             )}
@@ -202,12 +209,14 @@ const Browse = () => {
         <div className="bp-filters-inner">
 
           {/* genre tabs */}
-          <div className="bp-tabs-scroll">
-            {GENRES.map(g => (
+          <div className="bp-tabs-scroll" role="tablist" aria-label={t("browse_filter_genre")}>
+            {ALL_GENRES.map(g => (
               <button
                 key={g}
-                className={`bp-tab${genre === g ? " active" : ""}`}
-                onClick={() => setGenre(g)}
+                role="tab"
+                aria-selected={genre === g || (isAll(genre) && isAll(g))}
+                className={`bp-tab${isAll(genre) && isAll(g) || genre === g ? " active" : ""}`}
+                onClick={() => setGenre(isAll(g) ? ALL_VALS[0] : g)}
               >
                 {g}
               </button>
@@ -216,28 +225,30 @@ const Browse = () => {
 
           <div className="bp-bar-divider"/>
 
-          {/* right controls */}
           <div className="bp-controls">
 
             {/* language */}
             <select
               className="bp-select"
               value={language}
-              onChange={e => setLanguage(e.target.value)}
-              aria-label="Filter by language"
+              onChange={e => setLanguage(isAll(e.target.value) ? ALL_VALS[0] : e.target.value)}
+              aria-label={t("browse_filter_language")}
             >
-              {LANGUAGES.map(l => (
-                <option key={l} value={l}>{l === "All" ? "Language" : l}</option>
+              {ALL_LANGUAGES.map(l => (
+                <option key={l} value={l}>
+                  {isAll(l) ? t("browse_language_label") : l}
+                </option>
               ))}
             </select>
 
             {/* sort */}
-            <div className="bp-sort-group" role="group" aria-label="Sort">
+            <div className="bp-sort-group" role="group" aria-label={t("browse_sort_label")}>
               {SORTS.map(s => (
                 <button
                   key={s.value}
                   className={`bp-sort-btn${sort === s.value ? " active" : ""}`}
                   onClick={() => setSort(s.value)}
+                  aria-pressed={sort === s.value}
                 >
                   {s.label}
                 </button>
@@ -245,11 +256,11 @@ const Browse = () => {
             </div>
 
             {/* view toggle */}
-            <div className="bp-view-toggle" role="group" aria-label="View mode">
+            <div className="bp-view-toggle" role="group" aria-label={t("browse_view_label")}>
               <button
                 className={`bp-vtbtn${viewMode === "grid" ? " active" : ""}`}
                 onClick={() => setViewMode("grid")}
-                title="Grid view"
+                aria-label={t("browse_view_grid")}
                 aria-pressed={viewMode === "grid"}
               >
                 <IconGrid/>
@@ -257,7 +268,7 @@ const Browse = () => {
               <button
                 className={`bp-vtbtn${viewMode === "list" ? " active" : ""}`}
                 onClick={() => setViewMode("list")}
-                title="List view"
+                aria-label={t("browse_view_list")}
                 aria-pressed={viewMode === "list"}
               >
                 <IconList/>
@@ -266,9 +277,13 @@ const Browse = () => {
 
             {/* clear */}
             {hasFilters && (
-              <button className="bp-clear" onClick={clearFilters} aria-label="Clear all filters">
+              <button
+                className="bp-clear"
+                onClick={clearFilters}
+                aria-label={t("browse_clear_all")}
+              >
                 <IconX size={11}/>
-                Clear
+                {t("browse_clear")}
               </button>
             )}
 
@@ -279,11 +294,14 @@ const Browse = () => {
       {/* ══ ACTIVE FILTER PILLS ══ */}
       {activePills.length > 0 && (
         <div className="bp-pills-row">
-          <span className="bp-pills-label">Filtering by:</span>
+          <span className="bp-pills-label">{t("browse_filtering_by")}</span>
           {activePills.map(p => (
             <span key={p.key} className="bp-active-pill">
               {p.label}
-              <button onClick={() => removeFilter(p.key)} aria-label={`Remove ${p.label} filter`}>
+              <button
+                onClick={() => removeFilter(p.key)}
+                aria-label={`${t("browse_remove_filter")} ${p.label}`}
+              >
                 <IconX size={9}/>
               </button>
             </span>
@@ -298,9 +316,12 @@ const Browse = () => {
         {!loading && !error && (
           <div className="bp-count-bar">
             <span className="bp-count-txt">
-              Showing <b>{novels.length}</b> novel{novels.length !== 1 ? "s" : ""}
+              {t("browse_showing")} <b>{novels.length}</b>{" "}
+              {novels.length !== 1 ? t("browse_novels_pl") : t("browse_novel")}
               {hasFilters && (
-                <span className="bp-count-sub"> · filtered from {allNovels.length} total</span>
+                <span className="bp-count-sub">
+                  {" · "}{t("browse_filtered_from")} {allNovels.length} {t("browse_total")}
+                </span>
               )}
             </span>
           </div>
@@ -311,13 +332,13 @@ const Browse = () => {
           <div className="bp-error" role="alert">
             <IconAlert/>
             <span>{error}</span>
-            <button onClick={() => window.location.reload()}>Retry</button>
+            <button onClick={() => window.location.reload()}>{t("browse_retry")}</button>
           </div>
         )}
 
         {/* skeletons */}
         {loading && (
-          <div className="bp-grid">
+          <div className="bp-grid" aria-busy="true">
             {skels.map((_, i) => (
               <div className="bp-skel" key={i} aria-hidden="true">
                 <div className="bs-img" style={{ animationDelay: `${i * 0.05}s` }}/>
@@ -334,16 +355,14 @@ const Browse = () => {
         {!loading && !error && novels.length === 0 && (
           <div className="bp-empty">
             <div className="bp-empty-icon" aria-hidden="true"><IconBook/></div>
-            <p className="bp-empty-title">No novels found</p>
+            <p className="bp-empty-title">{t("browse_no_novels")}</p>
             <p className="bp-empty-sub">
-              {hasFilters
-                ? "Try adjusting your filters or search term to discover more titles."
-                : "No novels have been published yet. Check back soon!"}
+              {hasFilters ? t("browse_no_novels_filters") : t("browse_no_novels_yet")}
             </p>
             {hasFilters && (
               <button className="bp-empty-reset" onClick={clearFilters}>
                 <IconX size={12}/>
-                Reset all filters
+                {t("browse_reset_filters")}
               </button>
             )}
           </div>

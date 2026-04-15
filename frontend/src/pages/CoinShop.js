@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext }   from "../context/AuthContext";
 import { PointsContext } from "../context/PointsContext";
+import { useLang }       from "../context/LanguageContext";
 import "../styles/coinShop.css";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
@@ -47,12 +48,6 @@ const apiFetch = {
   },
 };
 
-const METHODS = [
-  { key: "card",    label: "Credit / Debit Card" },
-  { key: "mobile",  label: "eZ Cash / mCash"     },
-  { key: "banking", label: "Internet Banking"     },
-];
-
 const IC = {
   coin: (
     <svg viewBox="0 0 24 24" className="cs-coin-svg">
@@ -73,33 +68,29 @@ const IC = {
   inf:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
 };
 
-/* ── Inject PayHere SDK script dynamically if not already present ── */
 function usePayHereSDK(onReady) {
   const cbRef = useRef(onReady);
   cbRef.current = onReady;
 
   useEffect(() => {
-    const SCRIPT_ID = "payhere-sdk";
+    const SCRIPT_ID  = "payhere-sdk";
     const SCRIPT_SRC = "https://www.payhere.lk/lib/payhere.js";
 
-    // Already loaded
     if (window.payhere && typeof window.payhere.startPayment === "function") {
       cbRef.current(true);
       return;
     }
 
-    // Already injected but not ready yet — wait for it
     let existing = document.getElementById(SCRIPT_ID);
     if (!existing) {
       const script = document.createElement("script");
-      script.id   = SCRIPT_ID;
-      script.src  = SCRIPT_SRC;
+      script.id    = SCRIPT_ID;
+      script.src   = SCRIPT_SRC;
       script.async = true;
       document.head.appendChild(script);
       existing = script;
     }
 
-    // Poll until window.payhere is available (max 10s)
     let tries = 0;
     const timer = setInterval(() => {
       tries++;
@@ -115,13 +106,21 @@ function usePayHereSDK(onReady) {
     }, 100);
 
     return () => clearInterval(timer);
-  }, []); // run once
+  }, []);
 }
 
 export default function CoinShop() {
   const navigate        = useNavigate();
   const { user, token } = useContext(AuthContext);
   const { fetchPoints } = useContext(PointsContext);
+  const { t }           = useLang();
+
+  /* payment methods — rebuilt when lang changes */
+  const METHODS = [
+    { key: "card",    label: t("cs_method_card")    },
+    { key: "mobile",  label: t("cs_method_mobile")  },
+    { key: "banking", label: t("cs_method_banking") },
+  ];
 
   const [packages,    setPackages]    = useState(DEFAULT_PACKAGES);
   const [balance,     setBalance]     = useState(0);
@@ -139,7 +138,6 @@ export default function CoinShop() {
 
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  // ── Dynamically inject + wait for PayHere SDK ──
   usePayHereSDK((ready) => {
     setSdkReady(ready);
     if (!ready || !window.payhere) return;
@@ -157,19 +155,17 @@ export default function CoinShop() {
     };
     window.payhere.onDismissed = () => setPaying(false);
     window.payhere.onError     = (err) => {
-      setError("Payment error: " + (err || "Unknown error"));
+      setError(t("cs_pay_error") + ": " + (err || "Unknown error"));
       setPaying(false);
     };
   });
 
-  // Load packages
   useEffect(() => {
     apiFetch.getPackages()
       .then(pkgs => { if (Array.isArray(pkgs) && pkgs.length) setPackages(pkgs); })
       .catch(() => {});
   }, []);
 
-  // Load balance
   useEffect(() => {
     if (!token) return;
     apiFetch.getBalance(token)
@@ -177,7 +173,6 @@ export default function CoinShop() {
       .catch(() => {});
   }, [token]);
 
-  // Load history
   useEffect(() => {
     if (!showHistory || !token) return;
     apiFetch.getHistory(token).then(setHistory).catch(() => setHistory([]));
@@ -186,11 +181,11 @@ export default function CoinShop() {
   const pkg = packages[selIdx] ?? packages[0] ?? {};
 
   const validate = () => {
-    if (!user || !token) { setError("Please log in to purchase coins."); return false; }
-    if (!pkg.packageId)  { setError("Select a package first.");          return false; }
-    if (!sdkReady)       { setError("PayHere is still loading. Please wait a moment."); return false; }
+    if (!user || !token) { setError(t("cs_login_required"));  return false; }
+    if (!pkg.packageId)  { setError(t("cs_select_pkg"));      return false; }
+    if (!sdkReady)       { setError(t("cs_sdk_loading"));     return false; }
     if (method === "mobile" && phone.replace(/\D/g, "").length < 10) {
-      setError("Enter a valid 10-digit mobile number."); return false;
+      setError(t("cs_invalid_phone")); return false;
     }
     return true;
   };
@@ -221,30 +216,45 @@ export default function CoinShop() {
         country:     "Sri Lanka",
       });
     } catch (e) {
-      setError(e.message || "Something went wrong. Please try again.");
+      setError(e.message || t("cs_pay_fail"));
       setPaying(false);
     }
   };
+
+  /* perks — rebuilt when lang changes */
+  const perks = [
+    { ico: IC.book, color: "violet", title: t("cs_unlock"),      desc: t("cs_unlock_desc") },
+    { ico: IC.star, color: "amber",  title: t("cs_support"),     desc: t("cs_support_desc") },
+    { ico: IC.inf,  color: "teal",   title: t("cs_never_expire"),desc: t("cs_never_desc") },
+  ];
 
   return (
     <div className={`cs${mounted ? " in" : ""}`}>
 
       {/* ══ HERO ══ */}
       <div className="cs-hero">
-        <div className="cs-hero-grid" aria-hidden/>
+        <div className="cs-hero-grid" aria-hidden="true"/>
         <div className="cs-hero-inner">
-          <div className="cs-pill"><span className="cs-pill-dot"/>Navella Coins</div>
-          <h1 className="cs-h1">Top Up Your <em>Coins</em></h1>
-          <p className="cs-sub">Purchase coins to unlock premium chapters and support your favourite authors</p>
+          <div className="cs-pill">
+            <span className="cs-pill-dot"/>
+            Navella {t("nav_coins")}
+          </div>
+          <h1 className="cs-h1">{t("cs_title")}</h1>
+          <p className="cs-sub">{t("cs_sub")}</p>
           <div className="cs-balance">
-            <div className="cs-bal-ico">{IC.coin}</div>
+            <div className="cs-bal-ico" aria-hidden="true">{IC.coin}</div>
             <div>
               <div className="cs-bal-num">{balance.toLocaleString()}</div>
-              <div className="cs-bal-lbl">current balance</div>
+              <div className="cs-bal-lbl">{t("cs_balance")}</div>
             </div>
-            <button className="cs-hist-btn" onClick={() => setShowHistory(v => !v)}>
+            <button
+              className="cs-hist-btn"
+              onClick={() => setShowHistory(v => !v)}
+              aria-expanded={showHistory}
+              aria-controls="cs-hist-panel"
+            >
               {IC.history}
-              {showHistory ? "Hide history" : "View history"}
+              {showHistory ? t("cs_hide_hist") : t("cs_view_hist")}
             </button>
           </div>
         </div>
@@ -252,23 +262,25 @@ export default function CoinShop() {
 
       {/* ══ HISTORY ══ */}
       {showHistory && (
-        <div className="cs-hist-panel">
+        <div id="cs-hist-panel" className="cs-hist-panel">
           <div className="cs-hist-inner">
-            <h3 className="cs-hist-title">Purchase History</h3>
+            <h3 className="cs-hist-title">{t("cs_view_hist")}</h3>
             {history.length === 0 ? (
-              <p className="cs-hist-empty">No purchases yet.</p>
+              <p className="cs-hist-empty">{t("cs_no_purchases")}</p>
             ) : (
               <div className="cs-hist-list">
                 {history.map((h, i) => (
                   <div key={h._id || i} className="cs-hist-row">
                     <div className="cs-hist-left">
-                      <span className="cs-hist-coins">+{h.totalCoins ?? h.coins} coins</span>
+                      <span className="cs-hist-coins">+{h.totalCoins ?? h.coins} {t("coins")}</span>
                       <span className="cs-hist-pkg">{h.packageId}</span>
                     </div>
                     <div className="cs-hist-right">
                       <span className={`cs-hist-status s-${h.paymentStatus}`}>{h.paymentStatus}</span>
                       <span className="cs-hist-amt">LKR {h.amount}</span>
-                      <span className="cs-hist-date">{new Date(h.createdAt).toLocaleDateString("en-LK")}</span>
+                      <span className="cs-hist-date">
+                        {new Date(h.createdAt).toLocaleDateString("en-LK")}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -281,25 +293,33 @@ export default function CoinShop() {
       <div className="cs-content">
 
         {/* ══ PACKAGES ══ */}
-        <section>
-          <div className="cs-sec-label">Choose a package</div>
+        <section aria-label={t("cs_choose")}>
+          <div className="cs-sec-label">{t("cs_choose")}</div>
           <div className="cs-pkg-grid">
             {packages.map((p, i) => (
-              <div key={p.packageId}
+              <div
+                key={p.packageId}
                 className={`cs-pkg${i === selIdx ? " sel" : ""}${p.popular ? " pop" : ""}`}
                 onClick={() => { setSelIdx(i); setSuccess(false); setError(""); }}
-                style={{ animationDelay: `${i * 0.07}s` }}>
-                {p.popular && <span className="cs-pop-badge">Most popular</span>}
+                role="radio"
+                aria-checked={i === selIdx}
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { setSelIdx(i); setSuccess(false); setError(""); } }}
+                style={{ animationDelay: `${i * 0.07}s` }}
+              >
+                {p.popular && (
+                  <span className="cs-pop-badge">{t("cs_most_popular")}</span>
+                )}
                 <div className="cs-pkg-top">
-                  <div className="cs-pkg-ico">{IC.coin}</div>
+                  <div className="cs-pkg-ico" aria-hidden="true">{IC.coin}</div>
                   <span className="cs-pkg-coins">{p.coins.toLocaleString()}</span>
                 </div>
                 {p.bonus > 0
-                  ? <span className="cs-bonus">+{p.bonus} free bonus</span>
+                  ? <span className="cs-bonus">+{p.bonus} {t("cs_free_bonus")}</span>
                   : <span className="cs-no-bonus"/>
                 }
                 <div className="cs-pkg-price">LKR {p.price}</div>
-                <div className="cs-pkg-sub">Sri Lankan Rupees</div>
+                <div className="cs-pkg-sub">{t("cs_lkr_label")}</div>
               </div>
             ))}
           </div>
@@ -308,45 +328,51 @@ export default function CoinShop() {
         {/* ══ TWO COL ══ */}
         <div className="cs-two-col">
 
-          {/* LEFT */}
+          {/* LEFT — summary + perks */}
           <div>
-            <div className="cs-sec-label">Order summary</div>
+            <div className="cs-sec-label">{t("cs_order")}</div>
             <div className="cs-summary">
               <div className="cs-sum-row">
-                <span className="cs-sum-lbl">Package</span>
-                <span className="cs-sum-val gold">{(pkg.coins ?? 0).toLocaleString()} Coins</span>
+                <span className="cs-sum-lbl">{t("cs_package")}</span>
+                <span className="cs-sum-val gold">
+                  {(pkg.coins ?? 0).toLocaleString()} {t("coins")}
+                </span>
               </div>
               <div className="cs-sum-row">
-                <span className="cs-sum-lbl">Bonus coins</span>
-                <span className="cs-sum-val green">{(pkg.bonus ?? 0) > 0 ? `+${pkg.bonus} free` : "None"}</span>
+                <span className="cs-sum-lbl">{t("cs_bonus")}</span>
+                <span className="cs-sum-val green">
+                  {(pkg.bonus ?? 0) > 0 ? `+${pkg.bonus} ${t("free")}` : t("cs_none")}
+                </span>
               </div>
               <div className="cs-sum-row">
-                <span className="cs-sum-lbl">Total coins</span>
-                <span className="cs-sum-val gold">{((pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} coins</span>
+                <span className="cs-sum-lbl">{t("cs_total")}</span>
+                <span className="cs-sum-val gold">
+                  {((pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} {t("coins")}
+                </span>
               </div>
               <div className="cs-sum-row">
-                <span className="cs-sum-lbl">New balance after</span>
-                <span className="cs-sum-val gold">{(balance + (pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} coins</span>
+                <span className="cs-sum-lbl">{t("cs_new_balance")}</span>
+                <span className="cs-sum-val gold">
+                  {(balance + (pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} {t("coins")}
+                </span>
               </div>
               <div className="cs-sum-row">
-                <span className="cs-sum-lbl">Payment method</span>
-                <span className="cs-sum-val">{METHODS.find(m => m.key === method)?.label}</span>
+                <span className="cs-sum-lbl">{t("cs_pay_method")}</span>
+                <span className="cs-sum-val">
+                  {METHODS.find(m => m.key === method)?.label}
+                </span>
               </div>
               <div className="cs-sum-total">
-                <span className="cs-sum-total-lbl">Amount due</span>
+                <span className="cs-sum-total-lbl">{t("cs_amount_due")}</span>
                 <span className="cs-sum-total-val">LKR {pkg.price}</span>
               </div>
             </div>
 
-            <div className="cs-sec-label" style={{ marginTop: 22 }}>What you can do</div>
+            <div className="cs-sec-label" style={{ marginTop: 22 }}>{t("cs_what_can")}</div>
             <div className="cs-perks">
-              {[
-                { ico: IC.book, color: "violet", title: "Unlock chapters",    desc: "Access premium content for 10–50 coins each" },
-                { ico: IC.star, color: "amber",  title: "Support authors",    desc: "Send tips to your favourite writers" },
-                { ico: IC.inf,  color: "teal",   title: "Coins never expire", desc: "Stays in your wallet forever" },
-              ].map((pk, i) => (
+              {perks.map((pk, i) => (
                 <div key={i} className={`cs-perk c-${pk.color}`}>
-                  <div className="cs-perk-ico">{pk.ico}</div>
+                  <div className="cs-perk-ico" aria-hidden="true">{pk.ico}</div>
                   <div>
                     <div className="cs-perk-title">{pk.title}</div>
                     <div className="cs-perk-desc">{pk.desc}</div>
@@ -356,103 +382,155 @@ export default function CoinShop() {
             </div>
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT — payment */}
           <div>
-            <div className="cs-sec-label">Payment details</div>
+            <div className="cs-sec-label">{t("cs_pay_details")}</div>
             <div className="cs-pay-card">
               <div className="cs-pay-head">
-                <div className="cs-pay-head-ico">{IC.card}</div>
+                <div className="cs-pay-head-ico" aria-hidden="true">{IC.card}</div>
                 <div>
-                  <div className="cs-pay-title">Secure Payment</div>
-                  <div className="cs-pay-subtitle">Powered by PayHere · Sri Lanka</div>
+                  <div className="cs-pay-title">{t("cs_secure_pay")}</div>
+                  <div className="cs-pay-subtitle">{t("cs_powered_by")}</div>
                 </div>
                 <div className="cs-secure-badge">
                   {IC.shield}
                   {sdkReady
                     ? <span style={{ color: "#34d399" }}>256-bit SSL</span>
-                    : <span style={{ color: "#f59e0b" }}>Loading SDK…</span>
+                    : <span style={{ color: "#f59e0b" }}>{t("cs_sdk_loading")}</span>
                   }
                 </div>
               </div>
 
-              <div className="cs-methods">
+              {/* method selector */}
+              <div className="cs-methods" role="radiogroup" aria-label={t("cs_pay_method")}>
                 {METHODS.map(m => (
-                  <button key={m.key} type="button"
+                  <button
+                    key={m.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={method === m.key}
                     className={`cs-method${method === m.key ? " sel" : ""}`}
-                    onClick={() => { setMethod(m.key); setError(""); }}>
+                    onClick={() => { setMethod(m.key); setError(""); }}
+                  >
                     <span className="cs-method-dot"/>
-                    {IC[m.key === "banking" ? "bank" : m.key]}
+                    <span aria-hidden="true">{IC[m.key === "banking" ? "bank" : m.key]}</span>
                     {m.label}
                   </button>
                 ))}
               </div>
 
-              {error   && <div className="cs-error">{IC.alert} {error}</div>}
-              {success && (
-                <div className="cs-success">
-                  {IC.check} Payment confirmed! {((pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} coins added.
+              {error && (
+                <div className="cs-error" role="alert">
+                  <span aria-hidden="true">{IC.alert}</span> {error}
                 </div>
               )}
 
+              {success && (
+                <div className="cs-success" role="status">
+                  <span aria-hidden="true">{IC.check}</span>{" "}
+                  {t("cs_pay_confirmed")} {((pkg.coins ?? 0) + (pkg.bonus ?? 0)).toLocaleString()} {t("coins")} {t("cs_added")}.
+                </div>
+              )}
+
+              {/* card form */}
               {method === "card" && !success && (
                 <div className="cs-form">
                   <div className="cs-field cs-full">
-                    <label htmlFor="cs-name">FULL NAME</label>
-                    <input id="cs-name" name="fullName" type="text"
-                      value={user?.name || ""} readOnly style={{ opacity: 0.6, cursor: "default" }}/>
+                    <label htmlFor="cs-name">{t("cs_full_name")}</label>
+                    <input
+                      id="cs-name"
+                      name="fullName"
+                      type="text"
+                      value={user?.name || ""}
+                      readOnly
+                      style={{ opacity: 0.6, cursor: "default" }}
+                    />
                   </div>
                   <div className="cs-field cs-full">
-                    <label htmlFor="cs-email">EMAIL</label>
-                    <input id="cs-email" name="email" type="email"
-                      value={user?.email || ""} readOnly style={{ opacity: 0.6, cursor: "default" }}/>
+                    <label htmlFor="cs-email">{t("auth_email")}</label>
+                    <input
+                      id="cs-email"
+                      name="email"
+                      type="email"
+                      value={user?.email || ""}
+                      readOnly
+                      style={{ opacity: 0.6, cursor: "default" }}
+                    />
                   </div>
-                  <p className="cs-method-note">Your card details will be entered securely in the PayHere payment popup.</p>
+                  <p className="cs-method-note">{t("cs_card_note")}</p>
                 </div>
               )}
 
+              {/* mobile form */}
               {method === "mobile" && !success && (
                 <div className="cs-form">
                   <div className="cs-field cs-full">
-                    <label htmlFor="cs-phone">MOBILE NUMBER</label>
-                    <input id="cs-phone" name="phone" type="tel" placeholder="07X XXX XXXX"
+                    <label htmlFor="cs-phone">{t("cs_mobile_label")}</label>
+                    <input
+                      id="cs-phone"
+                      name="phone"
+                      type="tel"
+                      placeholder="07X XXX XXXX"
                       value={phone}
-                      onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}/>
+                      onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      aria-describedby="cs-phone-note"
+                    />
                   </div>
-                  <p className="cs-method-note">You'll receive an OTP to confirm via eZ Cash or mCash.</p>
+                  <p id="cs-phone-note" className="cs-method-note">{t("cs_mobile_note")}</p>
                 </div>
               )}
 
+              {/* banking form */}
               {method === "banking" && !success && (
                 <div className="cs-form">
                   <div className="cs-field cs-full">
-                    <label htmlFor="cs-bank">YOUR BANK</label>
-                    <input id="cs-bank" name="bank" type="text"
+                    <label htmlFor="cs-bank">{t("cs_bank_label")}</label>
+                    <input
+                      id="cs-bank"
+                      name="bank"
+                      type="text"
                       placeholder="e.g. BOC, Sampath, HNB, Commercial…"
-                      value={bank} onChange={e => setBank(e.target.value)}/>
+                      value={bank}
+                      onChange={e => setBank(e.target.value)}
+                    />
                   </div>
-                  <p className="cs-method-note">You'll be redirected to your bank's portal to complete payment.</p>
+                  <p className="cs-method-note">{t("cs_bank_note")}</p>
                 </div>
               )}
 
+              {/* pay button */}
               {!success && (
-                <button className="cs-pay-btn" type="button" onClick={handlePay}
-                  disabled={paying || !sdkReady || !user || !token}>
-                  {paying
-                    ? <><span className="cs-spinner"/> Redirecting to PayHere…</>
-                    : <>{IC.shield} Pay LKR {pkg.price} via PayHere</>
-                  }
+                <button
+                  className="cs-pay-btn"
+                  type="button"
+                  onClick={handlePay}
+                  disabled={paying || !sdkReady || !user || !token}
+                  aria-busy={paying}
+                >
+                  {paying ? (
+                    <><span className="cs-spinner" aria-hidden="true"/> {t("cs_redirecting")}</>
+                  ) : (
+                    <><span aria-hidden="true">{IC.shield}</span> {t("cs_pay_btn").replace("{price}", pkg.price)}</>
+                  )}
                 </button>
               )}
 
+              {/* login nudge */}
               {!user && (
                 <p className="cs-login-note">
-                  <button className="cs-login-link" type="button" onClick={() => navigate("/login")}>Log in</button>{" "}
-                  to purchase coins.
+                  <button
+                    className="cs-login-link"
+                    type="button"
+                    onClick={() => navigate("/login")}
+                  >
+                    {t("nav_login")}
+                  </button>{" "}
+                  {t("cs_login_note")}
                 </p>
               )}
 
               <p className="cs-pay-note">
-                {IC.clock} Coins credited instantly after confirmation ·{" "}
+                <span aria-hidden="true">{IC.clock}</span> {t("cs_credited")} ·{" "}
                 <span className="cs-ph-badge">PayHere LK</span>
               </p>
             </div>

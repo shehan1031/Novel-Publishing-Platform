@@ -1,5 +1,6 @@
 import React, { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
+import { useLang }     from "../context/LanguageContext";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/auth.css";
 
@@ -31,8 +32,8 @@ const PETALS = [
   {left:"73%", s:7,  h:5,  d:"14s", dl:"-3.5s"},
 ];
 
-const LeftPanel = () => (
-  <div className="auth-panel">
+const LeftPanel = ({ tagText, titleLine1, titleLine2, desc }) => (
+  <div className="auth-panel" aria-hidden="true">
     <div className="ap-stars">
       {STARS.map((s, i) => (
         <div key={i} className="ap-star" style={{
@@ -43,27 +44,16 @@ const LeftPanel = () => (
         }}/>
       ))}
     </div>
-    <div className="ap-shoot"/>
-    <div className="ap-shoot"/>
-    <div className="ap-shoot"/>
+    <div className="ap-shoot"/><div className="ap-shoot"/><div className="ap-shoot"/>
     <div className="ap-moon"/>
-    <div className="ap-orb ap-orb-1"/>
-    <div className="ap-orb ap-orb-2"/>
-    <div className="ap-orb ap-orb-3"/>
-    <div className="ap-orb ap-orb-4"/>
-    <div className="ap-circle ap-circle-1"/>
-    <div className="ap-circle ap-circle-2"/>
+    <div className="ap-orb ap-orb-1"/><div className="ap-orb ap-orb-2"/>
+    <div className="ap-orb ap-orb-3"/><div className="ap-orb ap-orb-4"/>
+    <div className="ap-circle ap-circle-1"/><div className="ap-circle ap-circle-2"/>
     <div className="ap-circle ap-circle-3"/>
-    <div className="ap-rune ap-rune-1"/>
-    <div className="ap-rune ap-rune-2"/>
-    <div className="ap-rune ap-rune-3"/>
-    <div className="ap-rune ap-rune-4"/>
-    <div className="ap-book bk1"/>
-    <div className="ap-book bk2"/>
-    <div className="ap-book bk3"/>
-    <div className="ap-book bk4"/>
-    <div className="ap-book bk5"/>
-    <div className="ap-book bk6"/>
+    <div className="ap-rune ap-rune-1"/><div className="ap-rune ap-rune-2"/>
+    <div className="ap-rune ap-rune-3"/><div className="ap-rune ap-rune-4"/>
+    <div className="ap-book bk1"/><div className="ap-book bk2"/><div className="ap-book bk3"/>
+    <div className="ap-book bk4"/><div className="ap-book bk5"/><div className="ap-book bk6"/>
     <div className="ap-petals">
       {PETALS.map((p, i) => (
         <div key={i} className="ap-petal" style={{
@@ -72,31 +62,21 @@ const LeftPanel = () => (
         }}/>
       ))}
     </div>
-    <div className="ap-sparkle sp1"/>
-    <div className="ap-sparkle sp2"/>
-    <div className="ap-sparkle sp3"/>
-    <div className="ap-sparkle sp4"/>
-    <div className="ap-sparkle sp5"/>
-    <div className="ap-sparkle sp6"/>
+    <div className="ap-sparkle sp1"/><div className="ap-sparkle sp2"/>
+    <div className="ap-sparkle sp3"/><div className="ap-sparkle sp4"/>
+    <div className="ap-sparkle sp5"/><div className="ap-sparkle sp6"/>
     <div className="ap-copy">
-      <div className="ap-tag">
-        <span className="ap-tag-dot"/>
-        Welcome back
-      </div>
-      <h2 className="ap-title">
-        Stories that<br/><em>move you</em>
-      </h2>
-      <p className="ap-desc">
-        Thousands of webnovels across every genre —
-        from epic fantasy to modern romance.
-      </p>
+      <div className="ap-tag"><span className="ap-tag-dot"/>{tagText}</div>
+      <h2 className="ap-title">{titleLine1}<br/><em>{titleLine2}</em></h2>
+      <p className="ap-desc">{desc}</p>
     </div>
   </div>
 );
 
 export default function Login() {
-  const { login }  = useContext(AuthContext);
-  const navigate   = useNavigate();
+  const { login } = useContext(AuthContext);
+  const { t }     = useLang();
+  const navigate  = useNavigate();
 
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -107,23 +87,17 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!email || !password) { setError("Please fill in all fields."); return; }
-
+    if (!email || !password) { setError(t("auth_fill_all")); return; }
     setLoading(true);
     try {
-      // ✅ login() returns userData with role
       const userData = await login({ email, password });
       const role     = userData?.role;
-
-      // ✅ redirect based on role
       if (role === "admin")  { navigate("/admin/dashboard",  { replace: true }); return; }
       if (role === "author") { navigate("/author/dashboard", { replace: true }); return; }
-      navigate("/", { replace: true }); // reader → home
-
+      navigate("/", { replace: true });
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-        "Login failed. Please check your credentials."
+        err.response?.data?.message || t("auth_login_fail")
       );
     } finally {
       setLoading(false);
@@ -132,7 +106,12 @@ export default function Login() {
 
   return (
     <div className="auth-root">
-      <LeftPanel />
+      <LeftPanel
+        tagText={t("auth_welcome_back")}
+        titleLine1={t("auth_lp_title1")}
+        titleLine2={t("auth_lp_title2")}
+        desc={t("auth_lp_desc")}
+      />
 
       <div className="auth-side">
         <div className="auth-card">
@@ -143,15 +122,15 @@ export default function Login() {
           </div>
 
           <div className="auth-head">
-            <h1 className="auth-title">Welcome back</h1>
-            <p className="auth-sub">Sign in to continue reading &amp; writing</p>
+            <h1 className="auth-title">{t("auth_welcome_back")}</h1>
+            <p className="auth-sub">{t("auth_login_sub")}</p>
           </div>
 
           {error && (
-            <div className="auth-error">
+            <div className="auth-error" role="alert" id="login-error">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round">
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -160,51 +139,57 @@ export default function Login() {
             </div>
           )}
 
-          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+          <form className="auth-form" onSubmit={handleSubmit} noValidate
+            aria-label={t("auth_login")}>
 
             <div className="af-field">
-              <label className="af-label">Email</label>
+              <label className="af-label" htmlFor="login-email">{t("auth_email")}</label>
               <div className="af-input-wrap">
                 <svg className="af-ico" width="15" height="15" viewBox="0 0 24 24"
                   fill="none" stroke="currentColor" strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round">
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                   <polyline points="22,6 12,13 2,6"/>
                 </svg>
                 <input
+                  id="login-email"
                   className="af-input"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   autoComplete="email"
+                  aria-required="true"
+                  aria-describedby={error ? "login-error" : undefined}
                   required
                 />
               </div>
             </div>
 
             <div className="af-field">
-              <div className="af-label-row">
-                <label className="af-label">Password</label>
-              </div>
+              <label className="af-label" htmlFor="login-password">{t("auth_password")}</label>
               <div className="af-input-wrap">
                 <svg className="af-ico" width="15" height="15" viewBox="0 0 24 24"
                   fill="none" stroke="currentColor" strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round">
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
                 <input
+                  id="login-password"
                   className="af-input"
                   type={showPass ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   autoComplete="current-password"
+                  aria-required="true"
                   required
                 />
-                <button type="button" className="af-eye"
-                  onClick={() => setShowPass(v => !v)} tabIndex={-1}>
+                <button type="button" className="af-eye" tabIndex={-1}
+                  aria-label={showPass ? t("auth_hide_pass") : t("auth_show_pass")}
+                  aria-pressed={showPass}
+                  onClick={() => setShowPass(v => !v)}>
                   {showPass
                     ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                     : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -213,20 +198,19 @@ export default function Login() {
               </div>
             </div>
 
-            <button className="af-submit" type="submit" disabled={loading}>
+            <button className="af-submit" type="submit"
+              disabled={loading} aria-busy={loading}>
               {loading
-                ? <><span className="af-spinner"/> Signing in…</>
-                : "Sign In →"
+                ? <><span className="af-spinner" aria-hidden="true"/> {t("auth_signing_in")}</>
+                : t("auth_sign_in_btn")
               }
             </button>
-
           </form>
 
           <p className="auth-footer">
-            Don't have an account?{" "}
-            <Link className="auth-link" to="/signup">Create one</Link>
+            {t("auth_no_account")}{" "}
+            <Link className="auth-link" to="/signup">{t("auth_create_one")}</Link>
           </p>
-
         </div>
       </div>
     </div>

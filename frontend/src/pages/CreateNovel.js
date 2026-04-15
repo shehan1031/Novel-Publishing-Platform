@@ -1,6 +1,7 @@
 import React, { useState, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useLang }     from "../context/LanguageContext";
 import { createNovel } from "../services/novelService";
 import "../styles/createNovel.css";
 
@@ -10,6 +11,7 @@ const LANGUAGES = ["English","Tamil","Sinhala","Japanese","Korean","French","Spa
 export default function CreateNovel() {
   const navigate     = useNavigate();
   const { token }    = useContext(AuthContext);
+  const { t }        = useLang();
   const fileRef      = useRef(null);
 
   const [title,       setTitle]       = useState("");
@@ -31,8 +33,7 @@ export default function CreateNovel() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!title.trim()) { setError("Title is required."); return; }
-
+    if (!title.trim()) { setError(t("ad_title_req")); return; }
     setCreating(true);
     try {
       const fd = new FormData();
@@ -42,12 +43,11 @@ export default function CreateNovel() {
       fd.append("language",    language);
       fd.append("status",      status);
       if (coverFile) fd.append("cover", coverFile);
-
       const created = await createNovel(fd, token);
       navigate(`/author/novel/${created._id}/edit`);
     } catch (err) {
       console.error("Create novel error:", err.response?.data || err);
-      setError(err.response?.data?.message || "Failed to create novel. Please try again.");
+      setError(err.response?.data?.message || t("ad_save_fail"));
     } finally {
       setCreating(false);
     }
@@ -56,83 +56,91 @@ export default function CreateNovel() {
   return (
     <div className="create-novel-page">
       <div className="cn-card">
-        <h1 className="cn-title">Create New Novel</h1>
+        <h1 className="cn-title">{t("ad_new_novel")}</h1>
 
         <form className="cn-form" onSubmit={handleSubmit} noValidate>
 
           {/* cover upload */}
           <div className="cn-cover-wrap"
+            role="button" tabIndex={0}
+            aria-label="Upload cover image"
             onClick={() => fileRef.current?.click()}
+            onKeyDown={e => { if (e.key==="Enter"||e.key===" ") fileRef.current?.click(); }}
             onDragOver={e => e.preventDefault()}
             onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }}>
-            {preview
-              ? <img src={preview} alt="cover preview" className="cn-cover-img"/>
-              : (
-                <div className="cn-cover-ph">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
-                    stroke="rgba(100,116,139,0.5)" strokeWidth="1.5">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                  <span>Drop cover image or click to upload</span>
-                </div>
-              )
-            }
+            {preview ? (
+              <img src={preview} alt="cover preview" className="cn-cover-img"/>
+            ) : (
+              <div className="cn-cover-ph">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                  stroke="rgba(100,116,139,0.5)" strokeWidth="1.5" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <span>Drop cover image or click to upload</span>
+              </div>
+            )}
             <input ref={fileRef} type="file" accept="image/*"
               style={{ display:"none" }}
+              aria-label="Cover image file"
               onChange={e => handleFile(e.target.files?.[0])}/>
           </div>
 
           <div className="cn-field">
-            <label className="cn-label">Title *</label>
-            <input className="cn-input" type="text"
+            <label className="cn-label" htmlFor="cn-title">Title *</label>
+            <input id="cn-title" className="cn-input" type="text"
               placeholder="Enter novel title…"
-              value={title} onChange={e => setTitle(e.target.value)} required/>
+              value={title} onChange={e => setTitle(e.target.value)}
+              aria-required="true" required/>
           </div>
 
           <div className="cn-field">
-            <label className="cn-label">Description</label>
-            <textarea className="cn-input cn-textarea" rows={4}
+            <label className="cn-label" htmlFor="cn-desc">Description</label>
+            <textarea id="cn-desc" className="cn-input cn-textarea" rows={4}
               placeholder="Write a short synopsis…"
               value={description} onChange={e => setDescription(e.target.value)}/>
           </div>
 
           <div className="cn-row">
             <div className="cn-field">
-              <label className="cn-label">Genre</label>
-              <select className="cn-input" value={genre} onChange={e => setGenre(e.target.value)}>
+              <label className="cn-label" htmlFor="cn-genre">Genre</label>
+              <select id="cn-genre" className="cn-input"
+                value={genre} onChange={e => setGenre(e.target.value)}>
                 <option value="">Select genre…</option>
                 {GENRES.map(g => <option key={g}>{g}</option>)}
               </select>
             </div>
 
             <div className="cn-field">
-              <label className="cn-label">Language</label>
-              <select className="cn-input" value={language} onChange={e => setLanguage(e.target.value)}>
+              <label className="cn-label" htmlFor="cn-lang">Language</label>
+              <select id="cn-lang" className="cn-input"
+                value={language} onChange={e => setLanguage(e.target.value)}>
                 <option value="">Select language…</option>
                 {LANGUAGES.map(l => <option key={l}>{l}</option>)}
               </select>
             </div>
 
             <div className="cn-field">
-              <label className="cn-label">Status</label>
-              <select className="cn-input" value={status} onChange={e => setStatus(e.target.value)}>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
+              <label className="cn-label" htmlFor="cn-status">Status</label>
+              <select id="cn-status" className="cn-input"
+                value={status} onChange={e => setStatus(e.target.value)}>
+                <option value="draft">{t("status_draft")}</option>
+                <option value="published">{t("status_published")}</option>
               </select>
             </div>
           </div>
 
-          {error && <p className="cn-error">{error}</p>}
+          {error && <p className="cn-error" role="alert">{error}</p>}
 
           <div className="cn-actions">
             <button type="button" className="cn-btn-ghost"
               onClick={() => navigate("/author/dashboard")}>
-              Cancel
+              {t("cancel")}
             </button>
-            <button type="submit" className="cn-btn-primary" disabled={creating}>
-              {creating ? "Creating…" : "Create Novel →"}
+            <button type="submit" className="cn-btn-primary"
+              disabled={creating} aria-busy={creating}>
+              {creating ? `${t("loading")}` : t("ad_create_btn")}
             </button>
           </div>
         </form>

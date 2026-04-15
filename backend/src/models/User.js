@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
     genres:   [String],
     language: { type: String, default: "English" },
     balance:  { type: Number, default: 0 },
-    banned:   { type: Boolean, default: false }, // ✅ for admin ban feature
+    banned:   { type: Boolean, default: false }, 
   },
   { timestamps: true }
 );

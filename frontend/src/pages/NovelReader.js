@@ -4,6 +4,7 @@ import React, {
 import { useParams, useNavigate }      from "react-router-dom";
 import { AuthContext }                 from "../context/AuthContext";
 import { ProgressContext }             from "../context/ProgressContext";
+import { useLang }                     from "../context/LanguageContext";
 import { getCommentsByChapter, addCommentToChapter } from "../services/commentService";
 import API from "../services/api";
 import "../styles/novelReader.css";
@@ -32,6 +33,7 @@ export default function NovelReader() {
   const { novelId, chapterId } = useParams();
   const navigate               = useNavigate();
   const { user, token }        = useContext(AuthContext);
+  const { t }                  = useLang();
   const { fetchReadingHistory, readingHistory, saveProgress } = useContext(ProgressContext);
 
   const [novel,          setNovel]          = useState(null);
@@ -173,7 +175,7 @@ export default function NovelReader() {
     e.preventDefault();
     setCommentError("");
     if (!newComment.trim()) return;
-    if (!token) { setCommentError("Please log in to comment."); return; }
+    if (!token) { setCommentError(t("nr_login_comment")); return; }
     setCommentLoading(true);
     try {
       const posted = await addCommentToChapter(chapterId, newComment.trim());
@@ -186,8 +188,7 @@ export default function NovelReader() {
     }
   };
 
-  const T = THEMES.find(t => t.key === theme) || THEMES[0];
-
+  const T = THEMES.find(th => th.key === theme) || THEMES[0];
   const cssVars = {
     "--nr-bg":      T.bg,
     "--nr-surface": T.surface,
@@ -201,14 +202,18 @@ export default function NovelReader() {
   if (loading) return (
     <div className="nr-loading" style={{ background: T.bg, color: T.muted }}>
       <div className="nr-spin"/>
-      <p>Loading chapter…</p>
+      <p>{t("nr_loading")}</p>
     </div>
   );
-  if (!novel) return <div className="nr-loading"><p>Novel not found.</p></div>;
+  if (!novel) return (
+    <div className="nr-loading"><p>{t("nr_novel_not_found")}</p></div>
+  );
 
   const chapters     = novel.chapters || [];
   const currentIndex = chapters.findIndex(c => c._id === chapterId);
-  if (currentIndex === -1) return <div className="nr-loading"><p>Chapter not found.</p></div>;
+  if (currentIndex === -1) return (
+    <div className="nr-loading"><p>{t("nr_ch_not_found")}</p></div>
+  );
 
   const chapter = chapters[currentIndex];
   const hasPrev = currentIndex > 0;
@@ -221,13 +226,15 @@ export default function NovelReader() {
       data-theme={theme}
       style={cssVars}
     >
-      {/* scroll progress line at very top */}
+      {/* scroll progress line */}
       <div className="nr-scroll-bar">
         <div className="nr-scroll-fill" style={{ width: `${scrollPct}%` }}/>
       </div>
 
       {/* share toast */}
-      {shareToast && <div className="nr-share-toast">Link copied!</div>}
+      {shareToast && (
+        <div className="nr-share-toast">{t("nr_link_copied")}</div>
+      )}
 
       {/* ══ TOP BAR ══ */}
       <header className="nr-topbar">
@@ -237,7 +244,7 @@ export default function NovelReader() {
             strokeLinecap="round" strokeLinejoin="round">
             <path d="m15 18-6-6 6-6"/>
           </svg>
-          Back
+          {t("nr_back")}
         </button>
 
         <div className="nr-topbar-center">
@@ -265,7 +272,7 @@ export default function NovelReader() {
             {showSettings && (
               <div className="nr-settings-panel">
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label">Font size</span>
+                  <span className="nr-settings-label">{t("nr_font_size")}</span>
                   <div className="nr-stepper">
                     <button onClick={() => setFontSize(s => Math.max(13, s - 1))}>−</button>
                     <span>{fontSize}px</span>
@@ -273,7 +280,7 @@ export default function NovelReader() {
                   </div>
                 </div>
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label">Line spacing</span>
+                  <span className="nr-settings-label">{t("nr_line_spacing")}</span>
                   <div className="nr-stepper">
                     <button onClick={() => setLineHeight(v => Math.max(1.4, +((v - 0.1).toFixed(1))))}>−</button>
                     <span>{lineHeight.toFixed(1)}</span>
@@ -281,21 +288,21 @@ export default function NovelReader() {
                   </div>
                 </div>
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label">Theme</span>
+                  <span className="nr-settings-label">{t("nr_theme_label")}</span>
                   <div className="nr-theme-grid">
-                    {THEMES.map(t => (
+                    {THEMES.map(th => (
                       <button
-                        key={t.key}
-                        className={`nr-theme-swatch${theme === t.key ? " active" : ""}`}
+                        key={th.key}
+                        className={`nr-theme-swatch${theme === th.key ? " active" : ""}`}
                         style={{
-                          background: t.bg,
-                          color: t.tx,
-                          borderColor: theme === t.key ? "#3b82f6" : t.border,
+                          background:  th.bg,
+                          color:       th.tx,
+                          borderColor: theme === th.key ? "#3b82f6" : th.border,
                         }}
-                        onClick={() => setTheme(t.key)}
+                        onClick={() => setTheme(th.key)}
                       >
-                        <span className="nr-swatch-dot" style={{ background: t.tx }}/>
-                        {t.label}
+                        <span className="nr-swatch-dot" style={{ background: th.tx }}/>
+                        {th.label}
                       </button>
                     ))}
                   </div>
@@ -310,7 +317,7 @@ export default function NovelReader() {
               strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
-            Chapters
+            {t("nr_chapters")}
           </button>
         </div>
       </header>
@@ -320,7 +327,7 @@ export default function NovelReader() {
         <div className="nr-nav-drawer" onClick={() => setShowNav(false)}>
           <div className="nr-nav-panel" onClick={e => e.stopPropagation()}>
             <div className="nr-nav-head">
-              <span>All Chapters ({chapters.length})</span>
+              <span>{t("nr_all_chapters")} ({chapters.length})</span>
               <button onClick={() => setShowNav(false)}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2.5"
@@ -353,7 +360,9 @@ export default function NovelReader() {
       <main className="nr-main">
 
         <div className="nr-chapter-head">
-          <p className="nr-chapter-meta">Chapter {currentIndex + 1} of {chapters.length}</p>
+          <p className="nr-chapter-meta">
+            {t("nr_chapter")} {currentIndex + 1} {t("nr_of")} {chapters.length}
+          </p>
           <h1 className="nr-chapter-title">{chapter.title}</h1>
           <p className="nr-novel-sub">
             {novel.title}
@@ -382,7 +391,7 @@ export default function NovelReader() {
               strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6"/>
             </svg>
-            Previous
+            {t("nr_previous")}
           </button>
           <div className="nr-chapter-pos">{currentIndex + 1} / {chapters.length}</div>
           <button
@@ -390,7 +399,7 @@ export default function NovelReader() {
             onClick={() => hasNext && goTo(currentIndex + 1)}
             disabled={!hasNext}
           >
-            Next
+            {t("nr_next")}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.2"
               strokeLinecap="round" strokeLinejoin="round">
@@ -402,7 +411,7 @@ export default function NovelReader() {
         {/* ══ COMMENTS ══ */}
         <section className="nr-comments">
           <h2 className="nr-comments-title">
-            Comments
+            {t("nr_comments")}
             {comments.length > 0 && (
               <span className="nr-comments-count">{comments.length}</span>
             )}
@@ -416,11 +425,13 @@ export default function NovelReader() {
                   className="nr-comment-textarea"
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
-                  placeholder="Share your thoughts…"
+                  placeholder={t("nr_comment_ph")}
                   rows={3}
                   maxLength={2000}
                 />
-                {commentError && <p className="nr-comment-err">{commentError}</p>}
+                {commentError && (
+                  <p className="nr-comment-err">{commentError}</p>
+                )}
                 <div className="nr-comment-form-foot">
                   <span className="nr-char-count">{newComment.length}/2000</span>
                   <button
@@ -429,8 +440,8 @@ export default function NovelReader() {
                     disabled={commentLoading || !newComment.trim()}
                   >
                     {commentLoading
-                      ? <><span className="nr-btn-spin"/>Posting…</>
-                      : "Post comment"
+                      ? <><span className="nr-btn-spin"/>{t("nr_posting")}</>
+                      : t("nr_post")
                     }
                   </button>
                 </div>
@@ -438,8 +449,8 @@ export default function NovelReader() {
             </form>
           ) : (
             <div className="nr-login-prompt">
-              <p>Log in to join the discussion</p>
-              <button onClick={() => navigate("/login")}>Log in</button>
+              <p>{t("nr_login_comment")}</p>
+              <button onClick={() => navigate("/login")}>{t("nr_login_btn")}</button>
             </div>
           )}
 
@@ -448,10 +459,10 @@ export default function NovelReader() {
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="1.5"
                 strokeLinecap="round" strokeLinejoin="round"
-                style={{ opacity:.25 }}>
+                style={{ opacity: .25 }}>
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
-              <p>No comments yet — be the first!</p>
+              <p>{t("nr_no_comments")}</p>
             </div>
           ) : (
             <div className="nr-comment-list">
@@ -475,13 +486,11 @@ export default function NovelReader() {
           )}
         </section>
 
-        {/* spacer so content isn't hidden behind floating pill */}
         <div style={{ height: 80 }}/>
       </main>
 
-      {/* ══ FLOATING PILL BAR — centered, like the reference ══ */}
+      {/* ══ FLOATING PILL BAR ══ */}
       <div className="nr-pill-bar">
-        {/* like */}
         <button
           className={`nr-pill-btn${liked ? " liked" : ""}`}
           onClick={() => { setLiked(v => !v); setLikeCount(c => liked ? c - 1 : c + 1); }}
@@ -498,11 +507,10 @@ export default function NovelReader() {
 
         <div className="nr-pill-sep"/>
 
-        {/* bookmark */}
         <button
           className={`nr-pill-btn${bookmarked ? " bookmarked" : ""}`}
           onClick={handleBookmark}
-          title={bookmarked ? "Remove bookmark" : "Bookmark"}
+          title={bookmarked ? t("bm_remove_bookmark") : t("bm_bookmark")}
         >
           <svg width="16" height="16" viewBox="0 0 24 24"
             fill={bookmarked ? "currentColor" : "none"}
@@ -514,8 +522,7 @@ export default function NovelReader() {
 
         <div className="nr-pill-sep"/>
 
-        {/* share */}
-        <button className="nr-pill-btn" onClick={handleShare} title="Share">
+        <button className="nr-pill-btn" onClick={handleShare}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2"
             strokeLinecap="round" strokeLinejoin="round">
@@ -529,7 +536,6 @@ export default function NovelReader() {
 
         <div className="nr-pill-sep"/>
 
-        {/* scroll % */}
         <span className="nr-pill-pct">{scrollPct}%</span>
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useLang }     from "../context/LanguageContext";
 import {
   getNovelById,
   rateNovel,
@@ -12,16 +13,14 @@ import "../styles/novelDetail.css";
 const API_BASE = (process.env.REACT_APP_API_URL || "http://localhost:5000/api")
   .replace("/api", "");
 
-/* ─── Star picker (interactive) ────────────────────────── */
+/* ── Star picker ── */
 const StarPicker = ({ value, onChange, disabled }) => {
   const [hovered, setHovered] = useState(0);
   const display = hovered || value;
   return (
     <div className="nd-star-picker">
-      {[1, 2, 3, 4, 5].map(i => (
-        <button
-          key={i}
-          type="button"
+      {[1,2,3,4,5].map(i => (
+        <button key={i} type="button"
           className={`nd-star-btn${i <= display ? " lit" : ""}`}
           onMouseEnter={() => !disabled && setHovered(i)}
           onMouseLeave={() => setHovered(0)}
@@ -41,12 +40,12 @@ const StarPicker = ({ value, onChange, disabled }) => {
   );
 };
 
-/* ─── Star display (read-only) ──────────────────────────── */
+/* ── Star display ── */
 const StarDisplay = ({ rating, count }) => {
   const r = parseFloat(rating) || 0;
   return (
     <div className="nd-star-display">
-      {[1, 2, 3, 4, 5].map(i => (
+      {[1,2,3,4,5].map(i => (
         <svg key={i} width="14" height="14" viewBox="0 0 24 24"
           fill={i <= Math.round(r) ? "#f59e0b" : "none"}
           stroke="#f59e0b" strokeWidth="1.8"
@@ -55,9 +54,7 @@ const StarDisplay = ({ rating, count }) => {
         </svg>
       ))}
       <span className="nd-rating-val">{r.toFixed(1)}</span>
-      {count > 0 && (
-        <span className="nd-rating-count">({count})</span>
-      )}
+      {count > 0 && <span className="nd-rating-count">({count})</span>}
     </div>
   );
 };
@@ -67,29 +64,25 @@ const Tag = ({ children, color = "blue" }) => (
 );
 
 export default function NovelDetail() {
-  const { novelId }       = useParams();
-  const navigate          = useNavigate();
-  const { user, token }   = useContext(AuthContext);
+  const { novelId }     = useParams();
+  const navigate        = useNavigate();
+  const { user, token } = useContext(AuthContext);
+  const { t }           = useLang();
 
   const [novel,           setNovel]           = useState(null);
   const [loading,         setLoading]         = useState(true);
   const [activeTab,       setActiveTab]       = useState("chapters");
   const [coverError,      setCoverError]      = useState(false);
   const [expandDesc,      setExpandDesc]      = useState(false);
-
-  // bookmark
   const [bookmarked,      setBookmarked]      = useState(false);
   const [bmLoading,       setBmLoading]       = useState(false);
   const [bmFeedback,      setBmFeedback]      = useState(false);
-
-  // rating
   const [myRating,        setMyRating]        = useState(0);
   const [liveRating,      setLiveRating]      = useState(0);
   const [liveRatingCount, setLiveRatingCount] = useState(0);
   const [ratingLoading,   setRatingLoading]   = useState(false);
   const [ratingFeedback,  setRatingFeedback]  = useState("");
 
-  /* ── fetch novel ── */
   const fetchNovel = useCallback(async () => {
     setLoading(true);
     try {
@@ -106,7 +99,6 @@ export default function NovelDetail() {
 
   useEffect(() => { fetchNovel(); }, [fetchNovel]);
 
-  /* ── fetch user's own rating ── */
   useEffect(() => {
     if (!token || !novelId) return;
     getMyRating(novelId, token)
@@ -114,7 +106,6 @@ export default function NovelDetail() {
       .catch(() => {});
   }, [token, novelId]);
 
-  /* ── check bookmark ── */
   useEffect(() => {
     if (!token || !novelId) return;
     API.get(`/bookmarks/${novelId}/check`, {
@@ -127,17 +118,15 @@ export default function NovelDetail() {
   if (loading) return (
     <div className="nd-loading">
       <div className="nd-spin"/>
-      <p>Loading novel…</p>
+      <p>{t("loading")}</p>
     </div>
   );
 
   if (!novel) return (
-    <div className="nd-loading"><p>Novel not found.</p></div>
+    <div className="nd-loading"><p>{t("nr_novel_not_found")}</p></div>
   );
 
-  const coverUrl     = !coverError && novel.cover
-    ? `${API_BASE}${novel.cover}`
-    : null;
+  const coverUrl     = !coverError && novel.cover ? `${API_BASE}${novel.cover}` : null;
   const totalCh      = novel.chapters?.length || 0;
   const premiumCh    = novel.chapters?.filter(c => c.isPremium).length || 0;
   const firstChapter = novel.chapters?.[0];
@@ -171,14 +160,10 @@ export default function NovelDetail() {
   const handleRate = async (stars) => {
     if (!user) { navigate("/login"); return; }
     if (ratingLoading) return;
-
-    // optimistic UI update
     setMyRating(stars);
     setRatingLoading(true);
     setRatingFeedback("");
-
     try {
-      // ✅ uses novelService which always passes token correctly
       const result = await rateNovel(novelId, stars, token);
       setLiveRating(result.rating);
       setLiveRatingCount(result.ratingCount);
@@ -186,7 +171,6 @@ export default function NovelDetail() {
       setTimeout(() => setRatingFeedback(""), 2400);
     } catch (err) {
       console.error("Rating error:", err.message);
-      // revert on failure
       setMyRating(0);
       setRatingFeedback(
         err.response?.data?.message || "Rating failed — please try again."
@@ -201,19 +185,37 @@ export default function NovelDetail() {
     navigate(`/novel/${novelId}/chapter/${ch._id}`);
   };
 
+  /* ── tabs — rebuilt on lang change ── */
+  const tabs = [
+    { id: "chapters", label: t("nd_chapters_tab"), count: totalCh },
+    { id: "about",    label: t("nd_about_tab")                    },
+    { id: "rate",     label: t("nd_rate_tab")                     },
+  ];
+
+  /* ── details grid — rebuilt on lang change ── */
+  const detailRows = [
+    { label: t("nd_author"),         value: novel.author?.name || "Unknown"                     },
+    { label: t("nd_genre"),          value: novel.genre        || "—"                           },
+    { label: t("nd_language"),       value: novel.language     || "—"                           },
+    { label: t("nd_status"),         value: novel.status       || "—"                           },
+    { label: t("nd_chapters_count"), value: totalCh                                             },
+    { label: t("nd_views"),          value: (novel.views || 0).toLocaleString()                 },
+    { label: t("nd_rating"),         value: `${parseFloat(liveRating).toFixed(1)} / 5`         },
+    { label: t("nd_ratings"),        value: liveRatingCount                                     },
+  ];
+
   return (
     <div className="nd">
 
       {/* ══ HERO ══ */}
       <div className="nd-hero">
         {coverUrl && (
-          <div className="nd-hero-bg"
-            style={{ backgroundImage: `url(${coverUrl})` }}/>
+          <div className="nd-hero-bg" style={{ backgroundImage: `url(${coverUrl})` }}/>
         )}
         <div className="nd-hero-overlay"/>
 
         <div className="nd-hero-inner">
-          {/* cover image */}
+          {/* cover */}
           <div className="nd-cover-wrap">
             {coverUrl ? (
               <img src={coverUrl} alt={novel.title}
@@ -231,16 +233,20 @@ export default function NovelDetail() {
             )}
             {novel.status && (
               <span className={`nd-status-badge nd-status--${novel.status}`}>
-                {novel.status}
+                {novel.status === "published" ? t("status_published")
+                 : novel.status === "draft"   ? t("status_draft")
+                 : novel.status === "banned"  ? t("status_banned")
+                 : novel.status}
               </span>
             )}
           </div>
 
           {/* meta */}
           <div className="nd-meta">
+            {/* breadcrumb */}
             <div className="nd-breadcrumb">
               <span className="nd-bc-link" onClick={() => navigate("/browse")}>
-                Browse
+                {t("nd_browse")}
               </span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2"
@@ -266,44 +272,41 @@ export default function NovelDetail() {
             <div className="nd-tags-row">
               {novel.genre    && <Tag color="blue">{novel.genre}</Tag>}
               {novel.language && <Tag color="purple">{novel.language}</Tag>}
-              {premiumCh > 0  && <Tag color="amber">⭐ Premium</Tag>}
+              {premiumCh > 0  && <Tag color="amber">⭐ {t("nd_premium")}</Tag>}
             </div>
 
+            {/* quick stats */}
             <div className="nd-quick-stats">
               <div className="nd-qs-item">
                 <span className="nd-qs-val">{totalCh}</span>
-                <span className="nd-qs-lbl">Chapters</span>
+                <span className="nd-qs-lbl">{t("nd_chapters_count")}</span>
               </div>
               <div className="nd-qs-div"/>
               <div className="nd-qs-item">
                 <span className="nd-qs-val">{premiumCh}</span>
-                <span className="nd-qs-lbl">Premium</span>
+                <span className="nd-qs-lbl">{t("nd_premium")}</span>
               </div>
               <div className="nd-qs-div"/>
               <div className="nd-qs-item">
-                <span className="nd-qs-val">
-                  {(novel.views || 0).toLocaleString()}
-                </span>
-                <span className="nd-qs-lbl">Views</span>
+                <span className="nd-qs-val">{(novel.views || 0).toLocaleString()}</span>
+                <span className="nd-qs-lbl">{t("nd_views")}</span>
               </div>
               <div className="nd-qs-div"/>
               <div className="nd-qs-item">
-                <span className="nd-qs-val">
-                  {parseFloat(liveRating).toFixed(1)}
-                </span>
-                <span className="nd-qs-lbl">Rating</span>
+                <span className="nd-qs-val">{parseFloat(liveRating).toFixed(1)}</span>
+                <span className="nd-qs-lbl">{t("nd_rating")}</span>
               </div>
             </div>
 
+            {/* CTA buttons */}
             <div className="nd-cta-row">
               {firstChapter && (
                 <button className="nd-btn-primary"
                   onClick={() => handleChapterClick(firstChapter)}>
-                  <svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="currentColor">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                     <polygon points="5 3 19 12 5 21 5 3"/>
                   </svg>
-                  Start Reading
+                  {t("nd_start_reading")}
                 </button>
               )}
               <button
@@ -331,7 +334,11 @@ export default function NovelDetail() {
                     <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
                   </svg>
                 )}
-                {bmFeedback ? "Saved!" : bookmarked ? "Bookmarked" : "Bookmark"}
+                {bmFeedback
+                  ? t("nd_saved")
+                  : bookmarked
+                    ? t("nd_bookmarked")
+                    : t("nd_bookmark")}
               </button>
             </div>
           </div>
@@ -341,19 +348,15 @@ export default function NovelDetail() {
       {/* ══ TABS ══ */}
       <div className="nd-tabs-bar">
         <div className="nd-tabs-inner">
-          {[
-            { id: "chapters", label: "Chapters", count: totalCh },
-            { id: "about",    label: "About"                    },
-            { id: "rate",     label: "Rate"                     },
-          ].map(t => (
+          {tabs.map(tab => (
             <button
-              key={t.id}
-              className={`nd-tab${activeTab === t.id ? " active" : ""}`}
-              onClick={() => setActiveTab(t.id)}
+              key={tab.id}
+              className={`nd-tab${activeTab === tab.id ? " active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
             >
-              {t.label}
-              {t.count != null && (
-                <span className="nd-tab-badge">{t.count}</span>
+              {tab.label}
+              {tab.count != null && (
+                <span className="nd-tab-badge">{tab.count}</span>
               )}
             </button>
           ))}
@@ -363,7 +366,7 @@ export default function NovelDetail() {
       {/* ══ BODY ══ */}
       <div className="nd-body">
 
-        {/* ── CHAPTERS ── */}
+        {/* ── CHAPTERS TAB ── */}
         {activeTab === "chapters" && (
           <div className="nd-chapters-wrap">
             {totalCh === 0 ? (
@@ -375,7 +378,7 @@ export default function NovelDetail() {
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
-                <p>No chapters published yet.</p>
+                <p>{t("nd_no_chapters")}</p>
               </div>
             ) : (
               <ul className="nd-ch-list">
@@ -392,7 +395,9 @@ export default function NovelDetail() {
                         <span className="nd-ch-title">{ch.title}</span>
                         {ch.isPremium && (
                           <span className="nd-ch-badge">
-                            {ch.coinCost > 0 ? `${ch.coinCost} coins` : "Premium"}
+                            {ch.coinCost > 0
+                              ? `${ch.coinCost} ${t("nd_coins")}`
+                              : t("nd_premium")}
                           </span>
                         )}
                       </span>
@@ -410,33 +415,24 @@ export default function NovelDetail() {
           </div>
         )}
 
-        {/* ── ABOUT ── */}
+        {/* ── ABOUT TAB ── */}
         {activeTab === "about" && (
           <div className="nd-about">
             <div className="nd-about-section">
-              <h2 className="nd-section-h">Synopsis</h2>
+              <h2 className="nd-section-h">{t("nd_synopsis")}</h2>
               <div className={`nd-desc${expandDesc ? " expanded" : ""}`}>
-                <p>{novel.description || "No description available."}</p>
+                <p>{novel.description || t("nd_no_desc")}</p>
               </div>
               {(novel.description || "").length > 280 && (
                 <button className="nd-expand-btn"
                   onClick={() => setExpandDesc(v => !v)}>
-                  {expandDesc ? "Show less ↑" : "Read more ↓"}
+                  {expandDesc ? t("nd_show_less") : t("nd_read_more")}
                 </button>
               )}
             </div>
 
             <div className="nd-details-grid">
-              {[
-                { label: "Author",   value: novel.author?.name || "Unknown" },
-                { label: "Genre",    value: novel.genre        || "—"        },
-                { label: "Language", value: novel.language     || "—"        },
-                { label: "Status",   value: novel.status       || "—"        },
-                { label: "Chapters", value: totalCh                          },
-                { label: "Views",    value: (novel.views || 0).toLocaleString() },
-                { label: "Rating",   value: `${parseFloat(liveRating).toFixed(1)} / 5` },
-                { label: "Ratings",  value: liveRatingCount                  },
-              ].map(d => (
+              {detailRows.map(d => (
                 <div key={d.label} className="nd-detail-cell">
                   <span className="nd-detail-lbl">{d.label}</span>
                   <span className="nd-detail-val">{d.value}</span>
@@ -451,20 +447,16 @@ export default function NovelDetail() {
           <div className="nd-rate-wrap">
             <div className="nd-rate-card">
 
-              {/* header */}
               <div className="nd-rate-hero">
                 <svg width="40" height="40" viewBox="0 0 24 24"
                   fill="#f59e0b" stroke="#d97706" strokeWidth="0.5"
                   strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                 </svg>
-                <h2 className="nd-rate-title">Rate this novel</h2>
-                <p className="nd-rate-sub">
-                  Your rating helps other readers discover great stories
-                </p>
+                <h2 className="nd-rate-title">{t("nd_rate_title")}</h2>
+                <p className="nd-rate-sub">{t("nd_rate_sub")}</p>
               </div>
 
-              {/* current average */}
               <div className="nd-rate-avg">
                 <span className="nd-rate-avg-num">
                   {parseFloat(liveRating).toFixed(1)}
@@ -473,20 +465,21 @@ export default function NovelDetail() {
                   <StarDisplay rating={liveRating} count={liveRatingCount}/>
                   <p className="nd-rate-avg-lbl">
                     {liveRatingCount === 0
-                      ? "No ratings yet — be the first!"
-                      : `Based on ${liveRatingCount} rating${liveRatingCount > 1 ? "s" : ""}`
+                      ? t("nd_no_ratings")
+                      : `${t("nd_based_on")} ${liveRatingCount} ${
+                          liveRatingCount > 1 ? t("nd_ratings_p") : t("nd_rating_s")
+                        }`
                     }
                   </p>
                 </div>
               </div>
 
-              {/* user picker */}
               {user ? (
                 <div className="nd-rate-picker-wrap">
                   <p className="nd-rate-picker-lbl">
                     {myRating > 0
-                      ? `Your current rating: ${myRating} star${myRating > 1 ? "s" : ""} — tap to change`
-                      : "Tap a star to submit your rating"
+                      ? `${t("nd_your_rating")} ${myRating} ${t("nd_tap_change")}`
+                      : t("nd_tap_to_rate")
                     }
                   </p>
 
@@ -499,24 +492,23 @@ export default function NovelDetail() {
                   {ratingLoading && (
                     <div className="nd-rate-feedback">
                       <div className="nd-spin" style={{ width:18, height:18, borderWidth:2 }}/>
-                      Saving…
+                      {t("loading")}
                     </div>
                   )}
 
                   {ratingFeedback && !ratingLoading && (
-                    <div className={`nd-rate-feedback${ratingFeedback.includes("failed") || ratingFeedback.includes("please") ? " err" : ""}`}>
+                    <div className={`nd-rate-feedback${
+                      ratingFeedback.includes("failed") || ratingFeedback.includes("please")
+                        ? " err" : ""}`}>
                       {ratingFeedback}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="nd-rate-login">
-                  <p>Log in to rate this novel.</p>
-                  <button
-                    className="nd-btn-primary"
-                    onClick={() => navigate("/login")}
-                  >
-                    Log in to rate
+                  <p>{t("nd_login_to_rate")}</p>
+                  <button className="nd-btn-primary" onClick={() => navigate("/login")}>
+                    {t("nd_login_rate_btn")}
                   </button>
                 </div>
               )}
