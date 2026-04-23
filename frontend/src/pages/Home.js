@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import useNovels from "../hooks/useNovels";
 import NovelCard from "../components/NovelCard";
@@ -35,14 +35,14 @@ const CursorDot = () => {
   }, []);
   return (
     <>
-      <div className="cur-dot"   ref={dot}/>
-      <div className="cur-trail" ref={trail}/>
+      <div className="cur-dot"   ref={dot}   aria-hidden="true"/>
+      <div className="cur-trail" ref={trail} aria-hidden="true"/>
     </>
   );
 };
 
-/* ── carousel — arrows only, no dots ── */
-const Carousel = ({ items, renderItem }) => {
+/* ── carousel ── */
+const Carousel = ({ items, renderItem, label }) => {
   const [idx,     setIdx]     = useState(0);
   const [perView, setPerView] = useState(4);
   const trackRef = useRef(null);
@@ -79,24 +79,44 @@ const Carousel = ({ items, renderItem }) => {
   const translate = `calc(-${idx * pct}% - ${idx * GAP}px)`;
 
   return (
-    <div className="hm-car-root">
+    <div
+      className="hm-car-root"
+      role="region"
+      aria-label={label}
+      aria-roledescription="carousel"
+    >
       <button
         className={`hm-car-btn hm-car-btn--l${canPrev ? "" : " off"}`}
-        onClick={() => go(-1)} disabled={!canPrev} aria-label="Previous"
+        onClick={() => go(-1)}
+        disabled={!canPrev}
+        aria-label="Previous novels"
+        aria-disabled={!canPrev}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          stroke="currentColor" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true">
           <path d="m15 18-6-6 6-6"/>
         </svg>
       </button>
 
-      <div className="hm-car-vp"
-        onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
-        <div ref={trackRef} className="hm-car-track"
-          style={{ transform: `translateX(${translate})` }}>
+      <div
+        className="hm-car-vp"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+      >
+        <div
+          ref={trackRef}
+          className="hm-car-track"
+          style={{ transform: `translateX(${translate})` }}
+        >
           {items.map((item, i) => (
-            <div key={item._id || i} className="hm-car-card"
-              style={{ flex: `0 0 calc(${pct}% - ${(GAP * (perView - 1)) / perView}px)` }}>
+            <div
+              key={item._id || i}
+              className="hm-car-card"
+              style={{ flex: `0 0 calc(${pct}% - ${(GAP * (perView - 1)) / perView}px)` }}
+            >
               {renderItem(item, i)}
             </div>
           ))}
@@ -105,10 +125,15 @@ const Carousel = ({ items, renderItem }) => {
 
       <button
         className={`hm-car-btn hm-car-btn--r${canNext ? "" : " off"}`}
-        onClick={() => go(1)} disabled={!canNext} aria-label="Next"
+        onClick={() => go(1)}
+        disabled={!canNext}
+        aria-label="Next novels"
+        aria-disabled={!canNext}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          stroke="currentColor" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true">
           <path d="m9 18 6-6-6-6"/>
         </svg>
       </button>
@@ -116,26 +141,25 @@ const Carousel = ({ items, renderItem }) => {
   );
 };
 
-/* ── section header — receives already-translated strings ── */
+/* ── section header ── */
 const SectionHeader = ({ eyebrow, title, viewAll, onViewAll }) => (
   <div className="hm-section-hd">
     <div>
       <div className="hm-eyebrow">
-        <span className="hm-eyebrow-line"/>
+        <span className="hm-eyebrow-line" aria-hidden="true"/>
         <span className="hm-eyebrow-text">{eyebrow}</span>
       </div>
-      {/* title may contain <em> tags so we use dangerouslySetInnerHTML */}
       <h2 className="hm-section-title" dangerouslySetInnerHTML={{ __html: title }}/>
     </div>
     <button className="hm-view-all" onClick={onViewAll}>
-      {viewAll} <span>→</span>
+      {viewAll} <span aria-hidden="true">→</span>
     </button>
   </div>
 );
 
 /* ── skeleton ── */
 const SkeletonRow = () => (
-  <div className="hm-skel-row">
+  <div className="hm-skel-row" aria-hidden="true">
     {[1,2,3,4].map(i => <div key={i} className="hm-skeleton"/>)}
   </div>
 );
@@ -146,7 +170,7 @@ const SkeletonRow = () => (
 export default function Home() {
   const { novels, fetchNovels, loading } = useNovels();
   const navigate = useNavigate();
-  const { t }    = useLang();                    // ✅ translation hook
+  const { t }    = useLang();
   const heroRef  = useRef(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
@@ -161,7 +185,6 @@ export default function Home() {
     });
   };
 
-  /* ── sorted lists ── */
   const newlyReleased = [...novels]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 8);
@@ -179,14 +202,12 @@ export default function Home() {
     ).slice(0, 8);
   })();
 
-  /* ── translated feature list — rebuilt when lang changes ── */
   const features = [
     { num:"01", icon:"📖", name: t("feat1_name"), desc: t("feat1_desc") },
     { num:"02", icon:"🔖", name: t("feat2_name"), desc: t("feat2_desc") },
     { num:"03", icon:"✍️", name: t("feat3_name"), desc: t("feat3_desc") },
   ];
 
-  /* ── translated stats ── */
   const stats = [
     { num: novels.length > 0 ? `${novels.length}+` : "1,200+", label: t("stat_novels")       },
     { num: "48k",                                                label: t("stat_readers")      },
@@ -199,26 +220,35 @@ export default function Home() {
       <CursorDot/>
 
       {/* ══ HERO ══ */}
-      <section className="hm-hero" ref={heroRef} onMouseMove={onMouseMove}>
-        <div className="hm-hero-grid"/>
-        <div className="hm-hero-glow"
+      <section
+        className="hm-hero"
+        ref={heroRef}
+        onMouseMove={onMouseMove}
+        aria-label="Hero"
+      >
+        <div className="hm-hero-grid" aria-hidden="true"/>
+        <div className="hm-hero-glow" aria-hidden="true"
           style={{ transform:`translate(${mouse.x*.25}px,${mouse.y*.2}px)` }}/>
-        <div className="hm-hero-glow2"
+        <div className="hm-hero-glow2" aria-hidden="true"
           style={{ transform:`translate(${-mouse.x*.15}px,${-mouse.y*.1}px)` }}/>
 
         {PARTICLES.map(p => (
-          <span key={p.id} className="hm-bubble" style={{
-            left: p.left, top: p.top,
-            width:  `${p.size}px`,
-            height: `${p.size}px`,
-            animationDelay:    p.delay,
-            animationDuration: p.duration,
-            "--op": p.opacity,
-          }}/>
+          <span
+            key={p.id}
+            className="hm-bubble"
+            aria-hidden="true"
+            style={{
+              left: p.left, top: p.top,
+              width:  `${p.size}px`,
+              height: `${p.size}px`,
+              animationDelay:    p.delay,
+              animationDuration: p.duration,
+              "--op": p.opacity,
+            }}
+          />
         ))}
 
         <div className="hm-hero-inner">
-          {/* ✅ translated */}
           <p className="hm-mono-tag">{t("hero_tag")}</p>
 
           <h1 className="hm-hero-title"
@@ -226,7 +256,6 @@ export default function Home() {
             Na<em>vel</em>la
           </h1>
 
-          {/* ✅ newline in translation string rendered as <br/> */}
           <p className="hm-hero-sub">
             {t("hero_sub").split("\n").map((line, i, arr) => (
               <React.Fragment key={i}>
@@ -235,36 +264,49 @@ export default function Home() {
             ))}
           </p>
 
-          <div className="hm-hero-line"/>
+          <div className="hm-hero-line" aria-hidden="true"/>
 
           <div className="hm-hero-ctas">
-            <button className="hm-btn-primary" onClick={() => navigate("/browse")}>
+            <button
+              className="hm-btn-primary"
+              onClick={() => navigate("/browse")}
+            >
               <span>{t("hero_explore")}</span>
             </button>
-            <button className="hm-btn-ghost" onClick={() => navigate("/login")}>
+            <button
+              className="hm-btn-ghost"
+              onClick={() => navigate("/login")}
+            >
               {t("hero_write")}
             </button>
           </div>
         </div>
 
-        <div className="hm-scroll-hint">
+        <div className="hm-scroll-hint" aria-hidden="true">
           <span>{t("hero_scroll")}</span>
           <div className="hm-scroll-line"/>
         </div>
       </section>
 
       {/* ══ STATS ══ */}
-      <div className="hm-stats">
+      <div
+        className="hm-stats"
+        role="list"
+        aria-label="Platform statistics"
+      >
         {stats.map((s, i) => (
-          <div key={i} className="hm-stat">
-            <div className="hm-stat-num">{s.num}</div>
-            <div className="hm-stat-label">{s.label}</div>
+          <div key={i} className="hm-stat" role="listitem">
+            <div className="hm-stat-num" aria-hidden="true">{s.num}</div>
+            <div className="hm-stat-label">
+              <span className="sr-only">{s.num} </span>
+              {s.label}
+            </div>
           </div>
         ))}
       </div>
 
       {/* ══ NEWLY RELEASED ══ */}
-      <section className="hm-novels">
+      <section className="hm-novels" aria-labelledby="new-heading">
         <div className="hm-novels-inner">
           <SectionHeader
             eyebrow={t("section_new_eyebrow")}
@@ -277,6 +319,7 @@ export default function Home() {
             : newlyReleased.length === 0
               ? <p className="hm-empty">{t("no_novels")}</p>
               : <Carousel
+                  label={t("section_new_eyebrow")}
                   items={newlyReleased}
                   renderItem={novel => <NovelCard novel={novel}/>}
                 />
@@ -285,7 +328,7 @@ export default function Home() {
       </section>
 
       {/* ══ TOP RATED ══ */}
-      <section className="hm-novels hm-novels--alt">
+      <section className="hm-novels hm-novels--alt" aria-labelledby="top-heading">
         <div className="hm-novels-inner">
           <SectionHeader
             eyebrow={t("section_top_eyebrow")}
@@ -298,14 +341,21 @@ export default function Home() {
             : topRated.length === 0
               ? <p className="hm-empty">{t("no_rated")}</p>
               : <Carousel
+                  label={t("section_top_eyebrow")}
                   items={topRated}
                   renderItem={(novel, i) => (
                     <div className="hm-rated-wrap">
-                      <div className={`hm-rank${i === 0 ? " gold" : ""}`}>#{i+1}</div>
+                      <div
+                        className={`hm-rank${i === 0 ? " gold" : ""}`}
+                        aria-label={`Ranked #${i + 1}`}
+                      >
+                        #{i+1}
+                      </div>
                       {novel.rating > 0 && (
-                        <div className="hm-rpill">
+                        <div className="hm-rpill" aria-hidden="true">
                           <svg width="10" height="10" viewBox="0 0 24 24"
-                            fill="#f59e0b" stroke="#d97706" strokeWidth="1">
+                            fill="#f59e0b" stroke="#d97706" strokeWidth="1"
+                            aria-hidden="true">
                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                           </svg>
                           <span>{parseFloat(novel.rating).toFixed(1)}</span>
@@ -322,10 +372,19 @@ export default function Home() {
       </section>
 
       {/* ══ FEATURES ══ */}
-      <div className="hm-features">
+      <div
+        className="hm-features"
+        role="list"
+        aria-label="Platform features"
+      >
         {features.map(f => (
-          <div key={f.num} className="hm-feature" data-num={f.num}>
-            <span className="hm-feature-icon">{f.icon}</span>
+          <div
+            key={f.num}
+            className="hm-feature"
+            role="listitem"
+            data-num={f.num}
+          >
+            <span className="hm-feature-icon" aria-hidden="true">{f.icon}</span>
             <h3 className="hm-feature-name">{f.name}</h3>
             <p className="hm-feature-desc">{f.desc}</p>
           </div>
@@ -334,9 +393,8 @@ export default function Home() {
 
       {/* ══ CTA ══ */}
       <div className="hm-cta">
-        <div className="hm-cta-watermark">NAVELLA</div>
+        <div className="hm-cta-watermark" aria-hidden="true">NAVELLA</div>
         <h2 className="hm-cta-title">
-          {/* split on \n so authors can control line breaks in translations */}
           {t("cta_title").split("\n").map((line, i, arr) => (
             <React.Fragment key={i}>
               {line}{i < arr.length - 1 && <br/>}
@@ -350,7 +408,7 @@ export default function Home() {
       </div>
 
       {/* ══ FOOTER ══ */}
-      <footer className="hm-footer">
+      <footer className="hm-footer" aria-label="Site footer">
         <div className="hm-footer-logo">Navella</div>
         <div className="hm-footer-copy">{t("footer_copy")}</div>
       </footer>

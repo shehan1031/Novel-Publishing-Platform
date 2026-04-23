@@ -1,0 +1,118 @@
+/* ═══════════════════════════════════════
+   NAVELLA — ACCESSIBILITY
+   Import in src/index.js
+═══════════════════════════════════════ */
+
+/* ── skip link ── */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+  transition: top 0.18s ease;
+  outline: none;
+}
+.skip-link:focus { top: 0; }
+
+/* ── global focus ring ── */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ── screen reader only ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── live announcer ── */
+#navella-announcer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior:           auto   !important;
+  }
+  .hm-bubble,
+  .cur-dot,
+  .cur-trail      { display: none !important; }
+  .hm-car-track   { transition: none !important; }
+  .nr-spin,
+  .nd-spin,
+  .av6-spinner,
+  .rd-ldots span  { animation: none !important; opacity: 0.6; }
+}
+
+/* ── high contrast ── */
+@media (forced-colors: active) {
+  .nc,
+  .navbar,
+  .nd-hero,
+  .nr-pill-bar,
+  .ls-dropdown,
+  .nb-panel {
+    border: 1px solid ButtonText;
+  }
+  .hm-btn-primary,
+  .hm-btn-dark,
+  .nd-btn-primary,
+  .nr-comment-btn,
+  .af-submit,
+  .av6-btn-primary {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border: 2px solid ButtonText;
+  }
+}
+
+/* ── mobile tap targets ── */
+@media (max-width: 768px) {
+  button,
+  [role="button"],
+  a,
+  select {
+    min-height: 44px;
+    min-width:  44px;
+  }
+}
+
+/* ── card keyboard focus ── */
+.rd-rv-card:focus-visible,
+.nc:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.rd-rv-card:focus:not(:focus-visible),
+.nc:focus:not(:focus-visible) { outline: none; }

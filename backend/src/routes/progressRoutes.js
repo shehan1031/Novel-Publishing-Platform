@@ -1,12 +1,16 @@
 const express = require("express");
-const router = express.Router();
-const auth = require("../middleware/authMiddleware");
+const router  = express.Router();
+const auth    = require("../middleware/authMiddleware");
 const {
+  getProgress,
   saveProgress,
-  getReadingHistory
+  getReadingHistory,
+  deleteProgress,
 } = require("../controllers/progressController");
 
-router.post("/", auth, saveProgress);
-router.get("/", auth, getReadingHistory);
+router.get   ("/",           auth, getProgress);
+router.post  ("/",           auth, saveProgress);
+router.get   ("/history",    auth, getReadingHistory);
+router.delete("/:chapterId", auth, deleteProgress);
 
 module.exports = router;

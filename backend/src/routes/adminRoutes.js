@@ -2,36 +2,64 @@ const express = require("express");
 const router  = express.Router();
 const auth    = require("../middleware/authMiddleware");
 const role    = require("../middleware/roleMiddleware");
-const {
-  getStats,
-  getUsers, banUser, deleteUser, changeRole,
-  getNovels, updateNovelStatus, deleteNovel,
-  getChapters, updateChapterStatus, deleteChapter,
-  getTransactions,
-  getComments, deleteComment,
-} = require("../controllers/adminController");
 
-// Every route in this file requires a valid token + admin role
+/* ── load admin controller ── */
+const adminController = require("../controllers/adminController");
+
+/* ── load points controller (withdrawal functions) ── */
+let pointsController = {};
+try {
+  pointsController = require("../controllers/pointsController");
+} catch {
+  try {
+    pointsController = require("../controllers/pointController");
+  } catch {
+    console.warn("⚠️  No points controller found — withdrawal routes disabled");
+  }
+}
+
+/* ── debug: print what's available ── */
+console.log("✅ adminController exports:", Object.keys(adminController));
+console.log("✅ pointsController exports:", Object.keys(pointsController));
+
+/* ── every route in this file requires valid token + admin role ── */
 router.use(auth, role(["admin"]));
 
-router.get("/stats",               getStats);
+/* ── helper: only register route if handler exists ── */
+const safe = (fn, name) => {
+  if (typeof fn === "function") return fn;
+  console.error(`❌ Missing handler: ${name} — route NOT registered`);
+  return (req, res) => res.status(501).json({ message: `${name} not implemented` });
+};
 
-router.get("/users",               getUsers);
-router.put("/users/:id/ban",       banUser);
-router.put("/users/:id/role",      changeRole);
-router.delete("/users/:id",        deleteUser);
+/* ── stats ── */
+router.get   ("/stats",               safe(adminController.getStats,            "getStats"));
 
-router.get("/novels",              getNovels);
-router.put("/novels/:id/status",   updateNovelStatus);
-router.delete("/novels/:id",       deleteNovel);
+/* ── users ── */
+router.get   ("/users",               safe(adminController.getUsers,            "getUsers"));
+router.put   ("/users/:id/ban",       safe(adminController.banUser,             "banUser"));
+router.put   ("/users/:id/role",      safe(adminController.changeRole,          "changeRole"));
+router.delete("/users/:id",           safe(adminController.deleteUser,          "deleteUser"));
 
-router.get("/chapters",            getChapters);
-router.put("/chapters/:id/status", updateChapterStatus);
-router.delete("/chapters/:id",     deleteChapter);
+/* ── novels ── */
+router.get   ("/novels",              safe(adminController.getNovels,           "getNovels"));
+router.put   ("/novels/:id/status",   safe(adminController.updateNovelStatus,   "updateNovelStatus"));
+router.delete("/novels/:id",          safe(adminController.deleteNovel,         "deleteNovel"));
 
-router.get("/transactions",        getTransactions);
+/* ── chapters ── */
+router.get   ("/chapters",            safe(adminController.getChapters,         "getChapters"));
+router.put   ("/chapters/:id/status", safe(adminController.updateChapterStatus, "updateChapterStatus"));
+router.delete("/chapters/:id",        safe(adminController.deleteChapter,       "deleteChapter"));
 
-router.get("/comments",            getComments);
-router.delete("/comments/:id",     deleteComment);
+/* ── transactions ── */
+router.get   ("/transactions",        safe(adminController.getTransactions,     "getTransactions"));
+
+/* ── comments ── */
+router.get   ("/comments",            safe(adminController.getComments,         "getComments"));
+router.delete("/comments/:id",        safe(adminController.deleteComment,       "deleteComment"));
+
+/* ── withdrawals ── */
+router.get   ("/withdrawals",         safe(pointsController.getAllWithdrawals,      "getAllWithdrawals"));
+router.put   ("/withdrawals/:id",     safe(pointsController.updateWithdrawalStatus, "updateWithdrawalStatus"));
 
 module.exports = router;

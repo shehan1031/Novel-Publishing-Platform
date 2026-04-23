@@ -6,6 +6,10 @@ import { AuthContext }                 from "../context/AuthContext";
 import { ProgressContext }             from "../context/ProgressContext";
 import { useLang }                     from "../context/LanguageContext";
 import { getCommentsByChapter, addCommentToChapter } from "../services/commentService";
+import {
+  translateChapter,
+  clearTranslationCache,
+} from "../services/translationService";
 import API from "../services/api";
 import "../styles/novelReader.css";
 
@@ -16,8 +20,9 @@ const timeAgo = (date) => {
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
 };
+
 const initials = (n = "") =>
-  n.split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
+  n.split(" ").filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join("") || "?";
 
 const THEMES = [
   { key:"dark",     label:"Dark",     bg:"#080c14", surface:"#0d1120", tx:"#e2e8f0", sub:"#94a3b8", muted:"#475569", border:"rgba(255,255,255,0.08)", barBg:"rgba(30,35,55,0.96)"    },
@@ -29,12 +34,93 @@ const THEMES = [
   { key:"paper",    label:"Paper",    bg:"#f2f0eb", surface:"#e8e5de", tx:"#2c2c2c", sub:"#666",    muted:"#aaa",    border:"rgba(0,0,0,0.1)",        barBg:"rgba(240,238,232,0.97)" },
 ];
 
+const TRANSLATE_LANGS = [
+  { code:"en", label:"English", flag:"🇬🇧" },
+  { code:"si", label:"සිංහල",  flag:"🇱🇰" },
+  { code:"ta", label:"தமிழ்",  flag:"🇮🇳" },
+];
+
+/* ════ Translation Bar ════ */
+const TranslationBar = ({
+  currentLang, onTranslate, translating,
+  translationError, isCached, progressMsg, t,
+}) => (
+  <div className="nr-translate-bar" role="region" aria-label="Content translation">
+    <div className="nr-translate-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/>
+        <path d="M2 5h12"/><path d="M7 2h1"/>
+        <path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>
+      </svg>
+      Translate
+    </div>
+
+    <div className="nr-translate-btns" role="group" aria-label="Select language">
+      {TRANSLATE_LANGS.map(l => (
+        <button
+          key={l.code}
+          className={`nr-translate-btn${currentLang === l.code ? " active" : ""}`}
+          onClick={() => onTranslate(l.code)}
+          disabled={translating}
+          aria-pressed={currentLang === l.code}
+          aria-label={`Translate to ${l.label}`}
+        >
+          <span aria-hidden="true">{l.flag}</span>
+          {l.label}
+          {currentLang === l.code && isCached && (
+            <span
+              className="nr-cached-dot"
+              title="Cached — instant"
+              aria-label="cached"
+            />
+          )}
+        </button>
+      ))}
+    </div>
+
+    {translating && (
+      <div className="nr-translating" role="status" aria-live="polite">
+        <div className="nr-translate-spin" aria-hidden="true"/>
+        <span>{progressMsg || "Translating…"}</span>
+      </div>
+    )}
+
+    {translationError && (
+      <div className="nr-translate-error" role="alert" aria-live="assertive">
+        {translationError}
+      </div>
+    )}
+  </div>
+);
+
+/* ════ Skeleton while translating ════ */
+const TranslatingSkeleton = () => (
+  <div className="nr-translate-skeleton" aria-hidden="true">
+    {Array.from({ length: 10 }).map((_, i) => (
+      <div
+        key={i}
+        className="nr-skel-line"
+        style={{
+          width: `${60 + (i % 4) * 10}%`,
+          animationDelay: `${i * 0.07}s`,
+        }}
+      />
+    ))}
+  </div>
+);
+
 export default function NovelReader() {
   const { novelId, chapterId } = useParams();
   const navigate               = useNavigate();
   const { user, token }        = useContext(AuthContext);
   const { t }                  = useLang();
-  const { fetchReadingHistory, readingHistory, saveProgress } = useContext(ProgressContext);
+  const {
+    fetchReadingHistory,
+    readingHistory,
+    saveProgress,
+  } = useContext(ProgressContext);
 
   const [novel,          setNovel]          = useState(null);
   const [comments,       setComments]       = useState([]);
@@ -54,11 +140,32 @@ export default function NovelReader() {
   const [mounted,        setMounted]        = useState(false);
   const [shareToast,     setShareToast]     = useState(false);
 
+  /* ── translation state ── */
+  const [displayLang,        setDisplayLang]        = useState("en");
+  const [translatedTitle,    setTranslatedTitle]    = useState(null);
+  const [translatedContent,  setTranslatedContent]  = useState(null);
+  const [translating,        setTranslating]        = useState(false);
+  const [translationError,   setTranslationError]   = useState("");
+  const [isCached,           setIsCached]           = useState(false);
+  const [progressMsg,        setProgressMsg]        = useState("");
+
   const progressTimerRef = useRef(null);
   const settingsRef      = useRef(null);
 
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
+  /* reset translation on chapter change */
+  useEffect(() => {
+    setDisplayLang("en");
+    setTranslatedTitle(null);
+    setTranslatedContent(null);
+    setTranslationError("");
+    setIsCached(false);
+    setProgressMsg("");
+    clearTranslationCache(chapterId);
+  }, [chapterId]);
+
+  /* close settings on outside click */
   useEffect(() => {
     const h = (e) => {
       if (settingsRef.current && !settingsRef.current.contains(e.target))
@@ -68,6 +175,15 @@ export default function NovelReader() {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  /* close drawer on Escape */
+  useEffect(() => {
+    if (!showNav) return;
+    const h = (e) => { if (e.key === "Escape") setShowNav(false); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [showNav]);
+
+  /* load novel */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -84,6 +200,7 @@ export default function NovelReader() {
     load();
   }, [novelId]);
 
+  /* load bookmark state */
   useEffect(() => {
     if (!token || !novelId) return;
     API.get(`/bookmarks/${novelId}/check`, {
@@ -91,23 +208,20 @@ export default function NovelReader() {
     }).then(r => setBookmarked(r.data.bookmarked || false)).catch(() => {});
   }, [token, novelId]);
 
+  /* load comments */
   const loadComments = useCallback(async () => {
     if (!chapterId) return;
     try {
       const data = await getCommentsByChapter(chapterId);
       setComments(data);
       setLikeCount(data.length || 0);
-    } catch (err) {
-      console.error(err.message);
-    }
+    } catch (err) { console.error(err.message); }
   }, [chapterId]);
 
   useEffect(() => { loadComments(); }, [loadComments]);
+  useEffect(() => { if (token) fetchReadingHistory(); }, [token]);
 
-  useEffect(() => {
-    if (token) fetchReadingHistory();
-  }, [token]);
-
+  /* restore reading position */
   useEffect(() => {
     if (!readingHistory?.length || !chapterId) return;
     const record = readingHistory.find(r =>
@@ -122,6 +236,7 @@ export default function NovelReader() {
     }
   }, [readingHistory, chapterId]);
 
+  /* track scroll + save progress */
   useEffect(() => {
     if (!chapterId) return;
     const handleScroll = () => {
@@ -147,14 +262,61 @@ export default function NovelReader() {
     };
   }, [chapterId, user, saveProgress]);
 
+  /* ── translation handler ── */
+  const handleTranslate = useCallback(async (lang) => {
+    /* clicking active non-English → toggle back to original */
+    if (lang === displayLang && lang !== "en") {
+      setDisplayLang("en");
+      setTranslatedTitle(null);
+      setTranslatedContent(null);
+      setIsCached(false);
+      return;
+    }
+    /* English → show original */
+    if (lang === "en") {
+      setDisplayLang("en");
+      setTranslatedTitle(null);
+      setTranslatedContent(null);
+      setIsCached(false);
+      return;
+    }
+
+    setTranslating(true);
+    setTranslationError("");
+    setProgressMsg("Connecting to translation service…");
+
+    try {
+      const result = await translateChapter(
+        chapterId,
+        lang,
+        (done, total, message) => setProgressMsg(message)
+      );
+
+      setTranslatedTitle(result.title);
+      setTranslatedContent(result.content);
+      setDisplayLang(lang);
+      setIsCached(result.cached);
+    } catch (err) {
+      console.error("Translation failed:", err.message);
+      setTranslationError(err.message);
+    } finally {
+      setTranslating(false);
+      setProgressMsg("");
+    }
+  }, [chapterId, displayLang]);
+
   const handleBookmark = async () => {
     if (!user) { navigate("/login"); return; }
     try {
       if (bookmarked) {
-        await API.delete(`/bookmarks/${novelId}`, { headers: { Authorization: `Bearer ${token}` } });
+        await API.delete(`/bookmarks/${novelId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setBookmarked(false);
       } else {
-        await API.post(`/bookmarks/${novelId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+        await API.post(`/bookmarks/${novelId}`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setBookmarked(true);
       }
     } catch (err) { console.error(err.message); }
@@ -200,19 +362,25 @@ export default function NovelReader() {
   };
 
   if (loading) return (
-    <div className="nr-loading" style={{ background: T.bg, color: T.muted }}>
-      <div className="nr-spin"/>
+    <div className="nr-loading"
+      style={{ background: T.bg, color: T.muted }}
+      role="status" aria-live="polite">
+      <div className="nr-spin" aria-hidden="true"/>
       <p>{t("nr_loading")}</p>
     </div>
   );
   if (!novel) return (
-    <div className="nr-loading"><p>{t("nr_novel_not_found")}</p></div>
+    <div className="nr-loading" role="alert">
+      <p>{t("nr_novel_not_found")}</p>
+    </div>
   );
 
   const chapters     = novel.chapters || [];
   const currentIndex = chapters.findIndex(c => c._id === chapterId);
   if (currentIndex === -1) return (
-    <div className="nr-loading"><p>{t("nr_ch_not_found")}</p></div>
+    <div className="nr-loading" role="alert">
+      <p>{t("nr_ch_not_found")}</p>
+    </div>
   );
 
   const chapter = chapters[currentIndex];
@@ -220,79 +388,117 @@ export default function NovelReader() {
   const hasNext = currentIndex < chapters.length - 1;
   const goTo    = (idx) => navigate(`/novel/${novelId}/chapter/${chapters[idx]._id}`);
 
+  /* decide what to display */
+  const displayTitle   = (displayLang !== "en" && translatedTitle)   ? translatedTitle   : chapter.title;
+  const displayContent = (displayLang !== "en" && translatedContent) ? translatedContent : chapter.content;
+  const contentLang    =
+    displayLang === "si" ? "si" :
+    displayLang === "ta" ? "ta" :
+    novel.language === "Sinhala" ? "si" :
+    novel.language === "Tamil"   ? "ta" : "en";
+
   return (
     <div
       className={`nr-shell${mounted ? " in" : ""}`}
       data-theme={theme}
       style={cssVars}
     >
-      {/* scroll progress line */}
-      <div className="nr-scroll-bar">
+      {/* scroll progress bar */}
+      <div className="nr-scroll-bar"
+        role="progressbar"
+        aria-valuenow={scrollPct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Reading progress: ${scrollPct}%`}>
         <div className="nr-scroll-fill" style={{ width: `${scrollPct}%` }}/>
       </div>
 
       {/* share toast */}
       {shareToast && (
-        <div className="nr-share-toast">{t("nr_link_copied")}</div>
+        <div className="nr-share-toast"
+          role="status" aria-live="polite" aria-atomic="true">
+          {t("nr_link_copied")}
+        </div>
       )}
 
       {/* ══ TOP BAR ══ */}
       <header className="nr-topbar">
-        <button className="nr-back-btn" onClick={() => navigate(`/novel/${novelId}`)}>
+        <button className="nr-back-btn"
+          onClick={() => navigate(`/novel/${novelId}`)}
+          aria-label={`${t("nr_back")} to ${novel.title}`}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2.2"
-            strokeLinecap="round" strokeLinejoin="round">
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="m15 18-6-6 6-6"/>
           </svg>
           {t("nr_back")}
         </button>
 
-        <div className="nr-topbar-center">
+        <div className="nr-topbar-center" aria-hidden="true">
           <span className="nr-novel-name">{novel.title}</span>
           <span className="nr-divider">·</span>
           <span className="nr-chapter-name">{chapter.title}</span>
         </div>
 
         <div className="nr-topbar-right">
-          {/* settings */}
+
+          {/* settings toggle */}
           <div className="nr-settings-wrap" ref={settingsRef}>
             <button
               className={`nr-icon-btn${showSettings ? " active" : ""}`}
               onClick={() => setShowSettings(v => !v)}
-              title="Reading settings"
-            >
+              aria-expanded={showSettings}
+              aria-controls="nr-settings-panel"
+              aria-label="Reading settings">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round">
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
             </button>
 
             {showSettings && (
-              <div className="nr-settings-panel">
+              <div id="nr-settings-panel" className="nr-settings-panel"
+                role="dialog" aria-label="Reading settings">
+
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label">{t("nr_font_size")}</span>
-                  <div className="nr-stepper">
-                    <button onClick={() => setFontSize(s => Math.max(13, s - 1))}>−</button>
-                    <span>{fontSize}px</span>
-                    <button onClick={() => setFontSize(s => Math.min(26, s + 1))}>+</button>
+                  <span className="nr-settings-label" id="fs-label">
+                    {t("nr_font_size")}
+                  </span>
+                  <div className="nr-stepper" role="group" aria-labelledby="fs-label">
+                    <button
+                      onClick={() => setFontSize(s => Math.max(13, s - 1))}
+                      aria-label="Decrease font size">−</button>
+                    <span aria-live="polite">{fontSize}px</span>
+                    <button
+                      onClick={() => setFontSize(s => Math.min(26, s + 1))}
+                      aria-label="Increase font size">+</button>
                   </div>
                 </div>
+
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label">{t("nr_line_spacing")}</span>
-                  <div className="nr-stepper">
-                    <button onClick={() => setLineHeight(v => Math.max(1.4, +((v - 0.1).toFixed(1))))}>−</button>
-                    <span>{lineHeight.toFixed(1)}</span>
-                    <button onClick={() => setLineHeight(v => Math.min(2.6, +((v + 0.1).toFixed(1))))}>+</button>
+                  <span className="nr-settings-label" id="ls-label">
+                    {t("nr_line_spacing")}
+                  </span>
+                  <div className="nr-stepper" role="group" aria-labelledby="ls-label">
+                    <button
+                      onClick={() => setLineHeight(v => Math.max(1.4, +((v - 0.1).toFixed(1))))}
+                      aria-label="Decrease line spacing">−</button>
+                    <span aria-live="polite">{lineHeight.toFixed(1)}</span>
+                    <button
+                      onClick={() => setLineHeight(v => Math.min(2.6, +((v + 0.1).toFixed(1))))}
+                      aria-label="Increase line spacing">+</button>
                   </div>
                 </div>
+
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label">{t("nr_theme_label")}</span>
-                  <div className="nr-theme-grid">
+                  <span className="nr-settings-label" id="theme-label">
+                    {t("nr_theme_label")}
+                  </span>
+                  <div className="nr-theme-grid" role="group" aria-labelledby="theme-label">
                     {THEMES.map(th => (
-                      <button
-                        key={th.key}
+                      <button key={th.key}
                         className={`nr-theme-swatch${theme === th.key ? " active" : ""}`}
                         style={{
                           background:  th.bg,
@@ -300,8 +506,10 @@ export default function NovelReader() {
                           borderColor: theme === th.key ? "#3b82f6" : th.border,
                         }}
                         onClick={() => setTheme(th.key)}
-                      >
-                        <span className="nr-swatch-dot" style={{ background: th.tx }}/>
+                        aria-pressed={theme === th.key}
+                        aria-label={`${th.label} theme`}>
+                        <span className="nr-swatch-dot"
+                          style={{ background: th.tx }} aria-hidden="true"/>
                         {th.label}
                       </button>
                     ))}
@@ -311,10 +519,15 @@ export default function NovelReader() {
             )}
           </div>
 
-          <button className="nr-chapters-btn" onClick={() => setShowNav(v => !v)}>
+          {/* chapters button */}
+          <button className="nr-chapters-btn"
+            onClick={() => setShowNav(v => !v)}
+            aria-expanded={showNav}
+            aria-controls="nr-nav-panel"
+            aria-label={`${t("nr_chapters")} — ${chapters.length} total`}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round">
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
             {t("nr_chapters")}
@@ -324,30 +537,36 @@ export default function NovelReader() {
 
       {/* ══ CHAPTER DRAWER ══ */}
       {showNav && (
-        <div className="nr-nav-drawer" onClick={() => setShowNav(false)}>
-          <div className="nr-nav-panel" onClick={e => e.stopPropagation()}>
+        <div className="nr-nav-drawer"
+          role="dialog" aria-modal="true"
+          aria-label={t("nr_all_chapters")}
+          onClick={() => setShowNav(false)}>
+          <div id="nr-nav-panel" className="nr-nav-panel"
+            onClick={e => e.stopPropagation()}>
             <div className="nr-nav-head">
               <span>{t("nr_all_chapters")} ({chapters.length})</span>
-              <button onClick={() => setShowNav(false)}>
+              <button onClick={() => setShowNav(false)} aria-label="Close chapters panel">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2.5"
-                  strokeLinecap="round" strokeLinejoin="round">
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <line x1="18" y1="6"  x2="6"  y2="18"/>
                   <line x1="6"  y1="6"  x2="18" y2="18"/>
                 </svg>
               </button>
             </div>
-            <div className="nr-nav-list">
+            <div className="nr-nav-list" role="list">
               {chapters.map((c, i) => (
-                <button
-                  key={c._id}
+                <button key={c._id}
                   className={`nr-nav-item${c._id === chapterId ? " active" : ""}`}
-                  onClick={() => { goTo(i); setShowNav(false); }}
-                >
-                  <span className="nr-nav-num">{String(i + 1).padStart(2, "0")}</span>
+                  aria-current={c._id === chapterId ? "true" : undefined}
+                  aria-label={`Chapter ${i+1}: ${c.title}${c.isPremium ? " — Premium" : " — Free"}`}
+                  onClick={() => { goTo(i); setShowNav(false); }}>
+                  <span className="nr-nav-num">{String(i+1).padStart(2,"0")}</span>
                   <span className="nr-nav-title">{c.title}</span>
                   {c.isPremium && (
-                    <span className="nr-nav-coin">{c.coinCost || "⭐"}</span>
+                    <span className="nr-nav-coin" aria-hidden="true">
+                      {c.coinCost || "⭐"}
+                    </span>
                   )}
                 </button>
               ))}
@@ -363,84 +582,119 @@ export default function NovelReader() {
           <p className="nr-chapter-meta">
             {t("nr_chapter")} {currentIndex + 1} {t("nr_of")} {chapters.length}
           </p>
-          <h1 className="nr-chapter-title">{chapter.title}</h1>
+          <h1 className="nr-chapter-title">{displayTitle}</h1>
           <p className="nr-novel-sub">
             {novel.title}
             {novel.author?.name && ` · by ${novel.author.name}`}
           </p>
         </div>
 
+        {/* ── TRANSLATION BAR ── */}
+        <TranslationBar
+          currentLang={displayLang}
+          onTranslate={handleTranslate}
+          translating={translating}
+          translationError={translationError}
+          isCached={isCached}
+          progressMsg={progressMsg}
+          t={t}
+        />
+
+        {/* ── CHAPTER CONTENT ── */}
         <article
           className="nr-content"
+          lang={contentLang}
           style={{ fontSize: `${fontSize}px`, lineHeight }}
         >
-          {(chapter.content || "").split("\n").map((para, i) =>
-            para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
-          )}
+          {translating
+            ? <TranslatingSkeleton/>
+            : (displayContent || "").split("\n").map((para, i) =>
+                para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
+              )
+          }
         </article>
 
-        {/* prev / next */}
-        <div className="nr-nav-btns">
+        {/* ── PREV / NEXT ── */}
+        <nav className="nr-nav-btns" aria-label="Chapter navigation">
           <button
             className={`nr-nav-btn${hasPrev ? "" : " disabled"}`}
             onClick={() => hasPrev && goTo(currentIndex - 1)}
             disabled={!hasPrev}
-          >
+            aria-label={hasPrev
+              ? `${t("nr_previous")}: ${chapters[currentIndex - 1]?.title}`
+              : t("nr_previous")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.2"
-              strokeLinecap="round" strokeLinejoin="round">
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="m15 18-6-6 6-6"/>
             </svg>
             {t("nr_previous")}
           </button>
-          <div className="nr-chapter-pos">{currentIndex + 1} / {chapters.length}</div>
+
+          <div className="nr-chapter-pos" aria-hidden="true">
+            {currentIndex + 1} / {chapters.length}
+          </div>
+
           <button
             className={`nr-nav-btn next${hasNext ? "" : " disabled"}`}
             onClick={() => hasNext && goTo(currentIndex + 1)}
             disabled={!hasNext}
-          >
+            aria-label={hasNext
+              ? `${t("nr_next")}: ${chapters[currentIndex + 1]?.title}`
+              : t("nr_next")}>
             {t("nr_next")}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.2"
-              strokeLinecap="round" strokeLinejoin="round">
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="m9 18 6-6-6-6"/>
             </svg>
           </button>
-        </div>
+        </nav>
 
         {/* ══ COMMENTS ══ */}
-        <section className="nr-comments">
+        <section className="nr-comments" aria-label={t("nr_comments")}>
           <h2 className="nr-comments-title">
             {t("nr_comments")}
             {comments.length > 0 && (
-              <span className="nr-comments-count">{comments.length}</span>
+              <span className="nr-comments-count"
+                aria-label={`${comments.length} comments`}>
+                {comments.length}
+              </span>
             )}
           </h2>
 
           {user ? (
-            <form className="nr-comment-form" onSubmit={handleCommentSubmit}>
-              <div className="nr-comment-avatar">{initials(user.name || user.email)}</div>
+            <form className="nr-comment-form"
+              onSubmit={handleCommentSubmit}
+              aria-label="Post a comment">
+              <div className="nr-comment-avatar" aria-hidden="true">
+                {initials(user.name || user.email)}
+              </div>
               <div className="nr-comment-input-wrap">
                 <textarea
+                  id="nr-comment-input"
                   className="nr-comment-textarea"
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
                   placeholder={t("nr_comment_ph")}
+                  aria-label={t("nr_comment_ph")}
+                  aria-describedby="nr-char-count"
                   rows={3}
                   maxLength={2000}
                 />
                 {commentError && (
-                  <p className="nr-comment-err">{commentError}</p>
+                  <p className="nr-comment-err" role="alert">{commentError}</p>
                 )}
                 <div className="nr-comment-form-foot">
-                  <span className="nr-char-count">{newComment.length}/2000</span>
-                  <button
-                    type="submit"
-                    className="nr-comment-btn"
+                  <span id="nr-char-count" className="nr-char-count"
+                    aria-live="polite" aria-atomic="true">
+                    {newComment.length}/2000
+                  </span>
+                  <button type="submit" className="nr-comment-btn"
                     disabled={commentLoading || !newComment.trim()}
-                  >
+                    aria-busy={commentLoading}>
                     {commentLoading
-                      ? <><span className="nr-btn-spin"/>{t("nr_posting")}</>
+                      ? <><span className="nr-btn-spin" aria-hidden="true"/>{t("nr_posting")}</>
                       : t("nr_post")
                     }
                   </button>
@@ -450,25 +704,27 @@ export default function NovelReader() {
           ) : (
             <div className="nr-login-prompt">
               <p>{t("nr_login_comment")}</p>
-              <button onClick={() => navigate("/login")}>{t("nr_login_btn")}</button>
+              <button onClick={() => navigate("/login")}>
+                {t("nr_login_btn")}
+              </button>
             </div>
           )}
 
           {comments.length === 0 ? (
-            <div className="nr-no-comments">
+            <div className="nr-no-comments" role="status">
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="1.5"
                 strokeLinecap="round" strokeLinejoin="round"
-                style={{ opacity: .25 }}>
+                style={{ opacity: .25 }} aria-hidden="true">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
               <p>{t("nr_no_comments")}</p>
             </div>
           ) : (
-            <div className="nr-comment-list">
+            <div className="nr-comment-list" role="list">
               {comments.map(c => (
-                <div key={c._id} className="nr-comment-item">
-                  <div className="nr-comment-author-avatar">
+                <div key={c._id} className="nr-comment-item" role="listitem">
+                  <div className="nr-comment-author-avatar" aria-hidden="true">
                     {initials(c.user?.name || c.user?.email || "U")}
                   </div>
                   <div className="nr-comment-body">
@@ -476,7 +732,9 @@ export default function NovelReader() {
                       <span className="nr-comment-author">
                         {c.user?.name || c.user?.email || "Unknown"}
                       </span>
-                      <span className="nr-comment-time">{timeAgo(c.createdAt)}</span>
+                      <time className="nr-comment-time" dateTime={c.createdAt}>
+                        {timeAgo(c.createdAt)}
+                      </time>
                     </div>
                     <p className="nr-comment-text">{c.content}</p>
                   </div>
@@ -490,42 +748,45 @@ export default function NovelReader() {
       </main>
 
       {/* ══ FLOATING PILL BAR ══ */}
-      <div className="nr-pill-bar">
+      <div className="nr-pill-bar" role="toolbar" aria-label="Reading actions">
+
         <button
           className={`nr-pill-btn${liked ? " liked" : ""}`}
-          onClick={() => { setLiked(v => !v); setLikeCount(c => liked ? c - 1 : c + 1); }}
-          title="Like"
-        >
+          onClick={() => { setLiked(v => !v); setLikeCount(c => liked ? c-1 : c+1); }}
+          aria-pressed={liked}
+          aria-label={liked ? "Unlike this chapter" : "Like this chapter"}>
           <svg width="16" height="16" viewBox="0 0 24 24"
             fill={liked ? "currentColor" : "none"}
             stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round">
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
-          <span>{likeCount}</span>
+          <span aria-hidden="true">{likeCount}</span>
+          <span className="sr-only">{likeCount} likes</span>
         </button>
 
-        <div className="nr-pill-sep"/>
+        <div className="nr-pill-sep" aria-hidden="true"/>
 
         <button
           className={`nr-pill-btn${bookmarked ? " bookmarked" : ""}`}
           onClick={handleBookmark}
-          title={bookmarked ? t("bm_remove_bookmark") : t("bm_bookmark")}
-        >
+          aria-pressed={bookmarked}
+          aria-label={bookmarked ? t("bm_remove_bookmark") : t("bm_bookmark")}>
           <svg width="16" height="16" viewBox="0 0 24 24"
             fill={bookmarked ? "currentColor" : "none"}
             stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round">
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
           </svg>
         </button>
 
-        <div className="nr-pill-sep"/>
+        <div className="nr-pill-sep" aria-hidden="true"/>
 
-        <button className="nr-pill-btn" onClick={handleShare}>
+        <button className="nr-pill-btn" onClick={handleShare}
+          aria-label="Share this chapter">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round">
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="18" cy="5" r="3"/>
             <circle cx="6" cy="12" r="3"/>
             <circle cx="18" cy="19" r="3"/>
@@ -534,11 +795,18 @@ export default function NovelReader() {
           </svg>
         </button>
 
-        <div className="nr-pill-sep"/>
+        <div className="nr-pill-sep" aria-hidden="true"/>
 
-        <span className="nr-pill-pct">{scrollPct}%</span>
+        <span className="nr-pill-pct"
+          role="progressbar"
+          aria-valuenow={scrollPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Reading progress: ${scrollPct}%`}>
+          {scrollPct}%
+        </span>
+
       </div>
-
     </div>
   );
 }
