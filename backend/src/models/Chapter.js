@@ -12,7 +12,7 @@ const chapterSchema = new mongoose.Schema({
   status:    { type: String,  default: "published", enum: ["draft","published","banned"] },
   banned:    { type: Boolean, default: false },
 
-  /* ── translation cache ── */
+  // Translation cache
   translations: {
     si: {
       title:        { type: String },

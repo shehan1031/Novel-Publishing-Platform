@@ -8,6 +8,7 @@ import {
   getMyRating,
 } from "../services/novelService";
 import API from "../services/api";
+import ChapterList from "../components/ChapterList";
 import "../styles/novelDetail.css";
 
 const API_BASE = (process.env.REACT_APP_API_URL || "http://localhost:5000/api")
@@ -30,11 +31,7 @@ const StarPicker = ({ value, onChange, disabled }) => {
   };
 
   return (
-    <div
-      className="nd-star-picker"
-      role="radiogroup"
-      aria-label="Star rating"
-    >
+    <div className="nd-star-picker" role="radiogroup" aria-label="Star rating">
       {[1,2,3,4,5].map(i => (
         <button
           key={i}
@@ -51,13 +48,10 @@ const StarPicker = ({ value, onChange, disabled }) => {
           disabled={disabled}
         >
           <svg
-            width="28" height="28"
-            viewBox="0 0 24 24"
+            width="28" height="28" viewBox="0 0 24 24"
             fill={i <= display ? "#f59e0b" : "none"}
-            stroke="#f59e0b"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            stroke="#f59e0b" strokeWidth="1.8"
+            strokeLinecap="round" strokeLinejoin="round"
             aria-hidden="true"
           >
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -75,14 +69,10 @@ const StarDisplay = ({ rating, count }) => {
     <div className="nd-star-display" aria-label={`Rating: ${r.toFixed(1)} out of 5`}>
       {[1,2,3,4,5].map(i => (
         <svg
-          key={i}
-          width="14" height="14"
-          viewBox="0 0 24 24"
+          key={i} width="14" height="14" viewBox="0 0 24 24"
           fill={i <= Math.round(r) ? "#f59e0b" : "none"}
-          stroke="#f59e0b"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          stroke="#f59e0b" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round"
           aria-hidden="true"
         >
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -150,13 +140,6 @@ export default function NovelDetail() {
       .catch(() => {});
   }, [token, novelId]);
 
-  /* tabs */
-  const tabs = [
-    { id: "chapters", label: t("nd_chapters_tab"), count: null },
-    { id: "about",    label: t("nd_about_tab")                 },
-    { id: "rate",     label: t("nd_rate_tab")                  },
-  ];
-
   if (loading) return (
     <div className="nd-loading" role="status" aria-live="polite">
       <div className="nd-spin" aria-hidden="true"/>
@@ -175,26 +158,23 @@ export default function NovelDetail() {
   const premiumCh    = novel.chapters?.filter(c => c.isPremium).length || 0;
   const firstChapter = novel.chapters?.[0];
 
-  /* updated tabs with count */
   const tabsWithCount = [
     { id: "chapters", label: t("nd_chapters_tab"), count: totalCh },
     { id: "about",    label: t("nd_about_tab"),    count: null    },
     { id: "rate",     label: t("nd_rate_tab"),     count: null    },
   ];
 
-  /* detail rows */
   const detailRows = [
-    { label: t("nd_author"),         value: novel.author?.name || "Unknown"            },
-    { label: t("nd_genre"),          value: novel.genre        || "—"                  },
-    { label: t("nd_language"),       value: novel.language     || "—"                  },
-    { label: t("nd_status"),         value: novel.status       || "—"                  },
-    { label: t("nd_chapters_count"), value: totalCh                                    },
-    { label: t("nd_views"),          value: (novel.views || 0).toLocaleString()        },
-    { label: t("nd_rating"),         value: `${parseFloat(liveRating).toFixed(1)} / 5` },
-    { label: t("nd_ratings"),        value: liveRatingCount                            },
+    { label: t("nd_author"),         value: novel.author?.name || "Unknown"             },
+    { label: t("nd_genre"),          value: novel.genre        || "—"                   },
+    { label: t("nd_language"),       value: novel.language     || "—"                   },
+    { label: t("nd_status"),         value: novel.status       || "—"                   },
+    { label: t("nd_chapters_count"), value: totalCh                                     },
+    { label: t("nd_views"),          value: (novel.views || 0).toLocaleString()         },
+    { label: t("nd_rating"),         value: `${parseFloat(liveRating).toFixed(1)} / 5`  },
+    { label: t("nd_ratings"),        value: liveRatingCount                             },
   ];
 
-  /* handlers */
   const handleBookmark = async () => {
     if (!user) { navigate("/login"); return; }
     setBmLoading(true);
@@ -241,10 +221,6 @@ export default function NovelDetail() {
     } finally {
       setRatingLoading(false);
     }
-  };
-
-  const handleChapterClick = (ch) => {
-    navigate(`/novel/${novelId}/chapter/${ch._id}`);
   };
 
   return (
@@ -294,10 +270,7 @@ export default function NovelDetail() {
           {/* meta */}
           <div className="nd-meta">
             <nav className="nd-breadcrumb" aria-label="Breadcrumb">
-              <button
-                className="nd-bc-link"
-                onClick={() => navigate("/browse")}
-              >
+              <button className="nd-bc-link" onClick={() => navigate("/browse")}>
                 {t("nd_browse")}
               </button>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
@@ -330,7 +303,6 @@ export default function NovelDetail() {
               {premiumCh > 0  && <Tag color="amber">⭐ {t("nd_premium")}</Tag>}
             </div>
 
-            {/* quick stats */}
             <div className="nd-quick-stats" role="list" aria-label="Novel statistics">
               <div className="nd-qs-item" role="listitem">
                 <span className="nd-qs-val">{totalCh}</span>
@@ -353,12 +325,11 @@ export default function NovelDetail() {
               </div>
             </div>
 
-            {/* CTA buttons */}
             <div className="nd-cta-row">
               {firstChapter && (
                 <button
                   className="nd-btn-primary"
-                  onClick={() => handleChapterClick(firstChapter)}
+                  onClick={() => navigate(`/novel/${novelId}/chapter/${firstChapter._id}`)}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24"
                     fill="currentColor" aria-hidden="true">
@@ -373,32 +344,29 @@ export default function NovelDetail() {
                 disabled={bmLoading}
                 aria-pressed={bookmarked}
                 aria-label={
-                  bmLoading  ? t("loading")       :
-                  bmFeedback ? t("nd_saved")       :
-                  bookmarked ? t("nd_bookmarked")  :
+                  bmLoading  ? t("loading")      :
+                  bmFeedback ? t("nd_saved")      :
+                  bookmarked ? t("nd_bookmarked") :
                                t("nd_bookmark")
                 }
               >
                 {bmLoading ? (
                   <svg className="nd-spin-ico" width="14" height="14"
                     viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2.5"
-                    aria-hidden="true">
+                    stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                     <path d="M21 12a9 9 0 1 1-6.22-8.56"/>
                   </svg>
                 ) : bmFeedback ? (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2.5"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    aria-hidden="true">
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 ) : (
                   <svg width="14" height="14" viewBox="0 0 24 24"
                     fill={bookmarked ? "currentColor" : "none"}
                     stroke="currentColor" strokeWidth="2.5"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    aria-hidden="true">
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
                   </svg>
                 )}
@@ -415,11 +383,7 @@ export default function NovelDetail() {
 
       {/* ══ TABS ══ */}
       <div className="nd-tabs-bar">
-        <div
-          className="nd-tabs-inner"
-          role="tablist"
-          aria-label="Novel sections"
-        >
+        <div className="nd-tabs-inner" role="tablist" aria-label="Novel sections">
           {tabsWithCount.map(tab => (
             <button
               key={tab.id}
@@ -445,10 +409,7 @@ export default function NovelDetail() {
             >
               {tab.label}
               {tab.count != null && (
-                <span
-                  className="nd-tab-badge"
-                  aria-label={`${tab.count} chapters`}
-                >
+                <span className="nd-tab-badge" aria-label={`${tab.count} chapters`}>
                   {tab.count}
                 </span>
               )}
@@ -460,7 +421,7 @@ export default function NovelDetail() {
       {/* ══ BODY ══ */}
       <div className="nd-body">
 
-        {/* ── CHAPTERS TAB ── */}
+        {/* ── CHAPTERS TAB — uses ChapterList with unlock modal ── */}
         <div
           id="tabpanel-chapters"
           role="tabpanel"
@@ -474,52 +435,19 @@ export default function NovelDetail() {
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="1.2"
                   strokeLinecap="round" strokeLinejoin="round"
-                  style={{ opacity: .2 }} aria-hidden="true">
+                  style={{ opacity:.2 }} aria-hidden="true">
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
                 <p>{t("nd_no_chapters")}</p>
               </div>
             ) : (
-              <ul
-                className="nd-ch-list"
-                aria-label={`${t("nd_chapters_tab")} — ${totalCh} total`}
-              >
-                {novel.chapters.map((ch, idx) => (
-                  <li key={ch._id}>
-                    <button
-                      className={`nd-ch-row${ch.isPremium ? " premium" : ""}`}
-                      onClick={() => handleChapterClick(ch)}
-                      aria-label={`Chapter ${idx + 1}: ${ch.title}${
-                        ch.isPremium
-                          ? ` — ${t("nd_premium")} ${ch.coinCost} ${t("nd_coins")}`
-                          : ` — ${t("free")}`
-                      }`}
-                    >
-                      <span className="nd-ch-num">
-                        {String(idx + 1).padStart(2, "0")}
-                      </span>
-                      <span className="nd-ch-info">
-                        <span className="nd-ch-title">{ch.title}</span>
-                        {ch.isPremium && (
-                          <span className="nd-ch-badge">
-                            {ch.coinCost > 0
-                              ? `${ch.coinCost} ${t("nd_coins")}`
-                              : t("nd_premium")}
-                          </span>
-                        )}
-                      </span>
-                      <svg className="nd-ch-arrow" width="14" height="14"
-                        viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2"
-                        strokeLinecap="round" strokeLinejoin="round"
-                        aria-hidden="true">
-                        <path d="m9 18 6-6-6-6"/>
-                      </svg>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              /* ChapterList handles FREE / LOCKED / UNLOCKED states
+                 and shows the coin unlock modal for premium chapters */
+              <ChapterList
+                chapters={novel.chapters || []}
+                novelId={novelId}
+              />
             )}
           </div>
         </div>
@@ -591,7 +519,9 @@ export default function NovelDetail() {
                     {liveRatingCount === 0
                       ? t("nd_no_ratings")
                       : `${t("nd_based_on")} ${liveRatingCount} ${
-                          liveRatingCount > 1 ? t("nd_ratings_p") : t("nd_rating_s")
+                          liveRatingCount > 1
+                            ? t("nd_ratings_p")
+                            : t("nd_rating_s")
                         }`
                     }
                   </p>
@@ -615,7 +545,11 @@ export default function NovelDetail() {
 
                   {ratingLoading && (
                     <div className="nd-rate-feedback" role="status">
-                      <div className="nd-spin" style={{ width:18, height:18, borderWidth:2 }} aria-hidden="true"/>
+                      <div
+                        className="nd-spin"
+                        style={{ width:18, height:18, borderWidth:2 }}
+                        aria-hidden="true"
+                      />
                       {t("loading")}
                     </div>
                   )}
@@ -623,8 +557,10 @@ export default function NovelDetail() {
                   {ratingFeedback && !ratingLoading && (
                     <div
                       className={`nd-rate-feedback${
-                        ratingFeedback.includes("failed") || ratingFeedback.includes("please")
-                          ? " err" : ""}`}
+                        ratingFeedback.includes("failed") ||
+                        ratingFeedback.includes("please")
+                          ? " err" : ""
+                      }`}
                       role="status"
                       aria-live="polite"
                     >

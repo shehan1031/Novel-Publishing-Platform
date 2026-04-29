@@ -4,6 +4,7 @@ import React, {
 import { useParams, useNavigate }      from "react-router-dom";
 import { AuthContext }                 from "../context/AuthContext";
 import { ProgressContext }             from "../context/ProgressContext";
+import { PointsContext }               from "../context/PointsContext";
 import { useLang }                     from "../context/LanguageContext";
 import { getCommentsByChapter, addCommentToChapter } from "../services/commentService";
 import {
@@ -56,7 +57,6 @@ const TranslationBar = ({
       </svg>
       Translate
     </div>
-
     <div className="nr-translate-btns" role="group" aria-label="Select language">
       {TRANSLATE_LANGS.map(l => (
         <button
@@ -70,23 +70,17 @@ const TranslationBar = ({
           <span aria-hidden="true">{l.flag}</span>
           {l.label}
           {currentLang === l.code && isCached && (
-            <span
-              className="nr-cached-dot"
-              title="Cached — instant"
-              aria-label="cached"
-            />
+            <span className="nr-cached-dot" title="Cached — instant" aria-label="cached"/>
           )}
         </button>
       ))}
     </div>
-
     {translating && (
       <div className="nr-translating" role="status" aria-live="polite">
         <div className="nr-translate-spin" aria-hidden="true"/>
         <span>{progressMsg || "Translating…"}</span>
       </div>
     )}
-
     {translationError && (
       <div className="nr-translate-error" role="alert" aria-live="assertive">
         {translationError}
@@ -99,29 +93,231 @@ const TranslationBar = ({
 const TranslatingSkeleton = () => (
   <div className="nr-translate-skeleton" aria-hidden="true">
     {Array.from({ length: 10 }).map((_, i) => (
-      <div
-        key={i}
-        className="nr-skel-line"
-        style={{
-          width: `${60 + (i % 4) * 10}%`,
-          animationDelay: `${i * 0.07}s`,
-        }}
-      />
+      <div key={i} className="nr-skel-line"
+        style={{ width:`${60 + (i % 4) * 10}%`, animationDelay:`${i * 0.07}s` }}/>
     ))}
   </div>
 );
 
+/* ════ Locked Chapter Gate ════ */
+const LockedGate = ({
+  chapter, points, user, unlocking, unlockError,
+  onUnlock, onBuyCoins, onBack, onLogin,
+}) => {
+  const canAfford = (points || 0) >= (chapter.coinCost || 0);
+  const shortage  = (chapter.coinCost || 0) - (points || 0);
+
+  return (
+    <div style={{
+      textAlign:"center",
+      padding:"64px 24px",
+      border:"1px solid rgba(245,158,11,0.2)",
+      borderRadius:20,
+      background:"rgba(245,158,11,0.03)",
+      margin:"40px 0",
+    }}>
+      {/* lock icon */}
+      <div style={{
+        width:72, height:72, borderRadius:"50%",
+        background:"rgba(245,158,11,0.1)",
+        border:"1px solid rgba(245,158,11,0.25)",
+        display:"flex", alignItems:"center",
+        justifyContent:"center",
+        margin:"0 auto 20px", fontSize:34,
+      }}>
+        🔒
+      </div>
+
+      <h3 style={{
+        color:"#e2e8f0", fontSize:22,
+        fontWeight:700, marginBottom:10,
+      }}>
+        Premium Chapter
+      </h3>
+      <p style={{ color:"#94a3b8", fontSize:14, marginBottom:6 }}>
+        Unlock this chapter for{" "}
+        <strong style={{ color:"#f59e0b" }}>{chapter.coinCost} coins</strong>
+      </p>
+      <p style={{ color:"#64748b", fontSize:13, marginBottom:28 }}>
+        Your balance:{" "}
+        <strong style={{ color: canAfford ? "#22c55e" : "#ef4444" }}>
+          {(points || 0).toLocaleString()} coins
+        </strong>
+      </p>
+
+      {/* cost breakdown */}
+      <div style={{
+        display:"inline-flex", flexDirection:"column", gap:8,
+        background:"rgba(255,255,255,0.03)",
+        border:"1px solid rgba(255,255,255,0.07)",
+        borderRadius:12, padding:"14px 20px",
+        marginBottom:24, minWidth:220,
+        textAlign:"left",
+      }}>
+        <div style={{ display:"flex", justifyContent:"space-between", gap:24 }}>
+          <span style={{ color:"#64748b", fontSize:12 }}>Chapter cost</span>
+          <span style={{ color:"#f59e0b", fontWeight:700, fontSize:13 }}>
+            {chapter.coinCost} coins
+          </span>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", gap:24 }}>
+          <span style={{ color:"#64748b", fontSize:12 }}>Your balance</span>
+          <span style={{ color: canAfford ? "#22c55e" : "#ef4444", fontWeight:600, fontSize:13 }}>
+            {(points || 0).toLocaleString()} coins
+          </span>
+        </div>
+        {canAfford && (
+          <div style={{
+            display:"flex", justifyContent:"space-between", gap:24,
+            borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:8,
+          }}>
+            <span style={{ color:"#64748b", fontSize:12 }}>After unlock</span>
+            <span style={{ color:"#e2e8f0", fontWeight:600, fontSize:13 }}>
+              {((points || 0) - (chapter.coinCost || 0)).toLocaleString()} coins
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* not enough warning */}
+      {user && !canAfford && (
+        <div style={{
+          background:"rgba(239,68,68,0.08)",
+          border:"1px solid rgba(239,68,68,0.2)",
+          borderRadius:10, padding:"10px 16px",
+          marginBottom:20, color:"#f87171",
+          fontSize:13, display:"inline-block",
+        }}>
+          You need <strong>{shortage}</strong> more coins
+        </div>
+      )}
+
+      {/* error */}
+      {unlockError && (
+        <div style={{
+          background:"rgba(239,68,68,0.08)",
+          border:"1px solid rgba(239,68,68,0.2)",
+          borderRadius:10, padding:"10px 16px",
+          marginBottom:20, color:"#f87171",
+          fontSize:13, display:"inline-block",
+        }}>
+          {unlockError}
+        </div>
+      )}
+
+      {/* perks */}
+      <div style={{
+        display:"flex", gap:16, justifyContent:"center",
+        fontSize:11, color:"#475569", marginBottom:28,
+        flexWrap:"wrap",
+      }}>
+        <span>✓ Permanent access</span>
+        <span>✓ All reading themes</span>
+        <span>✓ All languages</span>
+        <span>✓ Supports the author</span>
+      </div>
+
+      {/* action buttons */}
+      {user ? (
+        <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
+          {canAfford ? (
+            <button
+              onClick={onUnlock}
+              disabled={unlocking}
+              aria-busy={unlocking}
+              style={{
+                padding:"12px 30px", borderRadius:10,
+                border:"none",
+                background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                color:"#000", fontWeight:700, fontSize:14,
+                cursor: unlocking ? "not-allowed" : "pointer",
+                display:"flex", alignItems:"center", gap:8,
+                opacity: unlocking ? 0.8 : 1,
+              }}>
+              {unlocking ? (
+                <>
+                  <span style={{
+                    width:14, height:14,
+                    border:"2px solid rgba(0,0,0,0.2)",
+                    borderTopColor:"#000", borderRadius:"50%",
+                    display:"inline-block",
+                    animation:"nr-unlock-spin .7s linear infinite",
+                  }}/>
+                  Unlocking…
+                </>
+              ) : (
+                `🔓 Unlock for ${chapter.coinCost} coins`
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={onBuyCoins}
+              style={{
+                padding:"12px 30px", borderRadius:10, border:"none",
+                background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                color:"#000", fontWeight:700, fontSize:14, cursor:"pointer",
+              }}>
+              💰 Buy coins
+            </button>
+          )}
+          <button
+            onClick={onBack}
+            style={{
+              padding:"12px 24px", borderRadius:10,
+              border:"1px solid rgba(255,255,255,0.1)",
+              background:"transparent", color:"#64748b",
+              fontWeight:600, fontSize:14, cursor:"pointer",
+            }}>
+            ← Back to novel
+          </button>
+        </div>
+      ) : (
+        <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
+          <button
+            onClick={onLogin}
+            style={{
+              padding:"12px 30px", borderRadius:10, border:"none",
+              background:"linear-gradient(135deg,#3b82f6,#2563eb)",
+              color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer",
+            }}>
+            Log in to unlock
+          </button>
+          <button
+            onClick={onBack}
+            style={{
+              padding:"12px 24px", borderRadius:10,
+              border:"1px solid rgba(255,255,255,0.1)",
+              background:"transparent", color:"#64748b",
+              fontWeight:600, fontSize:14, cursor:"pointer",
+            }}>
+            ← Back to novel
+          </button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes nr-unlock-spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════
+   MAIN COMPONENT
+════════════════════════════════════════ */
 export default function NovelReader() {
   const { novelId, chapterId } = useParams();
   const navigate               = useNavigate();
   const { user, token }        = useContext(AuthContext);
   const { t }                  = useLang();
+  const { points, fetchPoints } = useContext(PointsContext);
   const {
     fetchReadingHistory,
     readingHistory,
     saveProgress,
   } = useContext(ProgressContext);
 
+  /* ── core state ── */
   const [novel,          setNovel]          = useState(null);
   const [comments,       setComments]       = useState([]);
   const [newComment,     setNewComment]     = useState("");
@@ -141,20 +337,27 @@ export default function NovelReader() {
   const [shareToast,     setShareToast]     = useState(false);
 
   /* ── translation state ── */
-  const [displayLang,        setDisplayLang]        = useState("en");
-  const [translatedTitle,    setTranslatedTitle]    = useState(null);
-  const [translatedContent,  setTranslatedContent]  = useState(null);
-  const [translating,        setTranslating]        = useState(false);
-  const [translationError,   setTranslationError]   = useState("");
-  const [isCached,           setIsCached]           = useState(false);
-  const [progressMsg,        setProgressMsg]        = useState("");
+  const [displayLang,       setDisplayLang]       = useState("en");
+  const [translatedTitle,   setTranslatedTitle]   = useState(null);
+  const [translatedContent, setTranslatedContent] = useState(null);
+  const [translating,       setTranslating]       = useState(false);
+  const [translationError,  setTranslationError]  = useState("");
+  const [isCached,          setIsCached]          = useState(false);
+  const [progressMsg,       setProgressMsg]       = useState("");
+
+  /* ── unlock state ── */
+  const [isUnlocked,     setIsUnlocked]     = useState(true);
+  const [checkingUnlock, setCheckingUnlock] = useState(false);
+  const [unlocking,      setUnlocking]      = useState(false);
+  const [unlockError,    setUnlockError]    = useState("");
 
   const progressTimerRef = useRef(null);
   const settingsRef      = useRef(null);
 
+  /* ── mount animation ── */
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  /* reset translation on chapter change */
+  /* ── reset translation on chapter change ── */
   useEffect(() => {
     setDisplayLang("en");
     setTranslatedTitle(null);
@@ -163,9 +366,13 @@ export default function NovelReader() {
     setIsCached(false);
     setProgressMsg("");
     clearTranslationCache(chapterId);
+    /* reset unlock state too */
+    setIsUnlocked(true);
+    setUnlockError("");
+    setCheckingUnlock(false);
   }, [chapterId]);
 
-  /* close settings on outside click */
+  /* ── close settings on outside click ── */
   useEffect(() => {
     const h = (e) => {
       if (settingsRef.current && !settingsRef.current.contains(e.target))
@@ -175,7 +382,7 @@ export default function NovelReader() {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  /* close drawer on Escape */
+  /* ── close drawer on Escape ── */
   useEffect(() => {
     if (!showNav) return;
     const h = (e) => { if (e.key === "Escape") setShowNav(false); };
@@ -183,7 +390,7 @@ export default function NovelReader() {
     return () => document.removeEventListener("keydown", h);
   }, [showNav]);
 
-  /* load novel */
+  /* ── load novel ── */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -200,7 +407,37 @@ export default function NovelReader() {
     load();
   }, [novelId]);
 
-  /* load bookmark state */
+  /* ── check unlock status whenever novel or chapter changes ── */
+  useEffect(() => {
+    if (!novel || !chapterId) return;
+
+    const chapter = (novel.chapters || []).find(c => c._id === chapterId);
+    if (!chapter) return;
+
+    /* free chapter — always accessible */
+    if (!chapter.isPremium || !chapter.coinCost) {
+      setIsUnlocked(true);
+      setCheckingUnlock(false);
+      return;
+    }
+
+    /* premium but not logged in */
+    if (!token) {
+      setIsUnlocked(false);
+      setCheckingUnlock(false);
+      return;
+    }
+
+    /* check with backend */
+    setCheckingUnlock(true);
+    API.get(`/chapters/${chapterId}/unlock-status`)
+      .then(res => setIsUnlocked(res.data.unlocked))
+      .catch(() => setIsUnlocked(false))
+      .finally(() => setCheckingUnlock(false));
+
+  }, [chapterId, novel, token]);
+
+  /* ── load bookmark ── */
   useEffect(() => {
     if (!token || !novelId) return;
     API.get(`/bookmarks/${novelId}/check`, {
@@ -208,7 +445,7 @@ export default function NovelReader() {
     }).then(r => setBookmarked(r.data.bookmarked || false)).catch(() => {});
   }, [token, novelId]);
 
-  /* load comments */
+  /* ── load comments ── */
   const loadComments = useCallback(async () => {
     if (!chapterId) return;
     try {
@@ -221,7 +458,7 @@ export default function NovelReader() {
   useEffect(() => { loadComments(); }, [loadComments]);
   useEffect(() => { if (token) fetchReadingHistory(); }, [token]);
 
-  /* restore reading position */
+  /* ── restore reading position ── */
   useEffect(() => {
     if (!readingHistory?.length || !chapterId) return;
     const record = readingHistory.find(r =>
@@ -236,9 +473,9 @@ export default function NovelReader() {
     }
   }, [readingHistory, chapterId]);
 
-  /* track scroll + save progress */
+  /* ── track scroll + save progress ── */
   useEffect(() => {
-    if (!chapterId) return;
+    if (!chapterId || !isUnlocked) return;
     const handleScroll = () => {
       const st = window.scrollY;
       const wH = window.innerHeight;
@@ -260,11 +497,10 @@ export default function NovelReader() {
       window.removeEventListener("scroll", handleScroll);
       clearTimeout(progressTimerRef.current);
     };
-  }, [chapterId, user, saveProgress]);
+  }, [chapterId, user, saveProgress, isUnlocked]);
 
   /* ── translation handler ── */
   const handleTranslate = useCallback(async (lang) => {
-    /* clicking active non-English → toggle back to original */
     if (lang === displayLang && lang !== "en") {
       setDisplayLang("en");
       setTranslatedTitle(null);
@@ -272,7 +508,6 @@ export default function NovelReader() {
       setIsCached(false);
       return;
     }
-    /* English → show original */
     if (lang === "en") {
       setDisplayLang("en");
       setTranslatedTitle(null);
@@ -280,18 +515,14 @@ export default function NovelReader() {
       setIsCached(false);
       return;
     }
-
     setTranslating(true);
     setTranslationError("");
     setProgressMsg("Connecting to translation service…");
-
     try {
       const result = await translateChapter(
-        chapterId,
-        lang,
+        chapterId, lang,
         (done, total, message) => setProgressMsg(message)
       );
-
       setTranslatedTitle(result.title);
       setTranslatedContent(result.content);
       setDisplayLang(lang);
@@ -305,6 +536,25 @@ export default function NovelReader() {
     }
   }, [chapterId, displayLang]);
 
+  /* ── unlock handler ── */
+  const handleUnlock = useCallback(async () => {
+    if (!chapter) return;
+    setUnlockError("");
+    setUnlocking(true);
+    try {
+      await API.post(`/chapters/${chapterId}/unlock`);
+      setIsUnlocked(true);
+      fetchPoints?.();
+    } catch (err) {
+      setUnlockError(
+        err.response?.data?.message || "Unlock failed. Please try again."
+      );
+    } finally {
+      setUnlocking(false);
+    }
+  }, [chapterId, fetchPoints]);
+
+  /* ── bookmark handler ── */
   const handleBookmark = async () => {
     if (!user) { navigate("/login"); return; }
     try {
@@ -322,6 +572,7 @@ export default function NovelReader() {
     } catch (err) { console.error(err.message); }
   };
 
+  /* ── share handler ── */
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({ title: chapter?.title, url: window.location.href });
@@ -333,6 +584,7 @@ export default function NovelReader() {
     }
   };
 
+  /* ── comment handler ── */
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     setCommentError("");
@@ -350,6 +602,7 @@ export default function NovelReader() {
     }
   };
 
+  /* ── theme CSS vars ── */
   const T = THEMES.find(th => th.key === theme) || THEMES[0];
   const cssVars = {
     "--nr-bg":      T.bg,
@@ -361,9 +614,9 @@ export default function NovelReader() {
     "--nr-bar-bg":  T.barBg,
   };
 
+  /* ── guards ── */
   if (loading) return (
-    <div className="nr-loading"
-      style={{ background: T.bg, color: T.muted }}
+    <div className="nr-loading" style={{ background:T.bg, color:T.muted }}
       role="status" aria-live="polite">
       <div className="nr-spin" aria-hidden="true"/>
       <p>{t("nr_loading")}</p>
@@ -388,7 +641,7 @@ export default function NovelReader() {
   const hasNext = currentIndex < chapters.length - 1;
   const goTo    = (idx) => navigate(`/novel/${novelId}/chapter/${chapters[idx]._id}`);
 
-  /* decide what to display */
+  /* what to display */
   const displayTitle   = (displayLang !== "en" && translatedTitle)   ? translatedTitle   : chapter.title;
   const displayContent = (displayLang !== "en" && translatedContent) ? translatedContent : chapter.content;
   const contentLang    =
@@ -410,7 +663,7 @@ export default function NovelReader() {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`Reading progress: ${scrollPct}%`}>
-        <div className="nr-scroll-fill" style={{ width: `${scrollPct}%` }}/>
+        <div className="nr-scroll-fill" style={{ width:`${scrollPct}%` }}/>
       </div>
 
       {/* share toast */}
@@ -438,11 +691,30 @@ export default function NovelReader() {
           <span className="nr-novel-name">{novel.title}</span>
           <span className="nr-divider">·</span>
           <span className="nr-chapter-name">{chapter.title}</span>
+          {chapter.isPremium && !isUnlocked && (
+            <span style={{
+              fontSize:10, fontWeight:700,
+              padding:"1px 7px", borderRadius:4,
+              background:"rgba(245,158,11,0.15)",
+              color:"#f59e0b", marginLeft:4,
+            }}>
+              🔒 PREMIUM
+            </span>
+          )}
+          {chapter.isPremium && isUnlocked && (
+            <span style={{
+              fontSize:10, fontWeight:700,
+              padding:"1px 7px", borderRadius:4,
+              background:"rgba(34,197,94,0.12)",
+              color:"#22c55e", marginLeft:4,
+            }}>
+              🔓 UNLOCKED
+            </span>
+          )}
         </div>
 
         <div className="nr-topbar-right">
-
-          {/* settings toggle */}
+          {/* settings */}
           <div className="nr-settings-wrap" ref={settingsRef}>
             <button
               className={`nr-icon-btn${showSettings ? " active" : ""}`}
@@ -457,59 +729,40 @@ export default function NovelReader() {
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
             </button>
-
             {showSettings && (
               <div id="nr-settings-panel" className="nr-settings-panel"
                 role="dialog" aria-label="Reading settings">
-
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label" id="fs-label">
-                    {t("nr_font_size")}
-                  </span>
+                  <span className="nr-settings-label" id="fs-label">{t("nr_font_size")}</span>
                   <div className="nr-stepper" role="group" aria-labelledby="fs-label">
-                    <button
-                      onClick={() => setFontSize(s => Math.max(13, s - 1))}
-                      aria-label="Decrease font size">−</button>
+                    <button onClick={() => setFontSize(s => Math.max(13,s-1))} aria-label="Decrease font size">−</button>
                     <span aria-live="polite">{fontSize}px</span>
-                    <button
-                      onClick={() => setFontSize(s => Math.min(26, s + 1))}
-                      aria-label="Increase font size">+</button>
+                    <button onClick={() => setFontSize(s => Math.min(26,s+1))} aria-label="Increase font size">+</button>
                   </div>
                 </div>
-
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label" id="ls-label">
-                    {t("nr_line_spacing")}
-                  </span>
+                  <span className="nr-settings-label" id="ls-label">{t("nr_line_spacing")}</span>
                   <div className="nr-stepper" role="group" aria-labelledby="ls-label">
-                    <button
-                      onClick={() => setLineHeight(v => Math.max(1.4, +((v - 0.1).toFixed(1))))}
-                      aria-label="Decrease line spacing">−</button>
+                    <button onClick={() => setLineHeight(v => Math.max(1.4,+((v-0.1).toFixed(1))))} aria-label="Decrease line spacing">−</button>
                     <span aria-live="polite">{lineHeight.toFixed(1)}</span>
-                    <button
-                      onClick={() => setLineHeight(v => Math.min(2.6, +((v + 0.1).toFixed(1))))}
-                      aria-label="Increase line spacing">+</button>
+                    <button onClick={() => setLineHeight(v => Math.min(2.6,+((v+0.1).toFixed(1))))} aria-label="Increase line spacing">+</button>
                   </div>
                 </div>
-
                 <div className="nr-settings-section">
-                  <span className="nr-settings-label" id="theme-label">
-                    {t("nr_theme_label")}
-                  </span>
+                  <span className="nr-settings-label" id="theme-label">{t("nr_theme_label")}</span>
                   <div className="nr-theme-grid" role="group" aria-labelledby="theme-label">
                     {THEMES.map(th => (
                       <button key={th.key}
-                        className={`nr-theme-swatch${theme === th.key ? " active" : ""}`}
+                        className={`nr-theme-swatch${theme===th.key?" active":""}`}
                         style={{
                           background:  th.bg,
                           color:       th.tx,
-                          borderColor: theme === th.key ? "#3b82f6" : th.border,
+                          borderColor: theme===th.key ? "#3b82f6" : th.border,
                         }}
                         onClick={() => setTheme(th.key)}
-                        aria-pressed={theme === th.key}
+                        aria-pressed={theme===th.key}
                         aria-label={`${th.label} theme`}>
-                        <span className="nr-swatch-dot"
-                          style={{ background: th.tx }} aria-hidden="true"/>
+                        <span className="nr-swatch-dot" style={{ background:th.tx }} aria-hidden="true"/>
                         {th.label}
                       </button>
                     ))}
@@ -557,11 +810,11 @@ export default function NovelReader() {
             <div className="nr-nav-list" role="list">
               {chapters.map((c, i) => (
                 <button key={c._id}
-                  className={`nr-nav-item${c._id === chapterId ? " active" : ""}`}
-                  aria-current={c._id === chapterId ? "true" : undefined}
-                  aria-label={`Chapter ${i+1}: ${c.title}${c.isPremium ? " — Premium" : " — Free"}`}
+                  className={`nr-nav-item${c._id===chapterId?" active":""}`}
+                  aria-current={c._id===chapterId?"true":undefined}
+                  aria-label={`Chapter ${i+1}: ${c.title}${c.isPremium?" — Premium":" — Free"}`}
                   onClick={() => { goTo(i); setShowNav(false); }}>
-                  <span className="nr-nav-num">{String(i+1).padStart(2,"0")}</span>
+                  <span className="nr-nav-num">{String(i+1).padStart(2,"00")}</span>
                   <span className="nr-nav-title">{c.title}</span>
                   {c.isPremium && (
                     <span className="nr-nav-coin" aria-hidden="true">
@@ -580,7 +833,7 @@ export default function NovelReader() {
 
         <div className="nr-chapter-head">
           <p className="nr-chapter-meta">
-            {t("nr_chapter")} {currentIndex + 1} {t("nr_of")} {chapters.length}
+            {t("nr_chapter")} {currentIndex+1} {t("nr_of")} {chapters.length}
           </p>
           <h1 className="nr-chapter-title">{displayTitle}</h1>
           <p className="nr-novel-sub">
@@ -589,69 +842,99 @@ export default function NovelReader() {
           </p>
         </div>
 
-        {/* ── TRANSLATION BAR ── */}
-        <TranslationBar
-          currentLang={displayLang}
-          onTranslate={handleTranslate}
-          translating={translating}
-          translationError={translationError}
-          isCached={isCached}
-          progressMsg={progressMsg}
-          t={t}
-        />
-
-        {/* ── CHAPTER CONTENT ── */}
-        <article
-          className="nr-content"
-          lang={contentLang}
-          style={{ fontSize: `${fontSize}px`, lineHeight }}
-        >
-          {translating
-            ? <TranslatingSkeleton/>
-            : (displayContent || "").split("\n").map((para, i) =>
-                para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
-              )
-          }
-        </article>
-
-        {/* ── PREV / NEXT ── */}
-        <nav className="nr-nav-btns" aria-label="Chapter navigation">
-          <button
-            className={`nr-nav-btn${hasPrev ? "" : " disabled"}`}
-            onClick={() => hasPrev && goTo(currentIndex - 1)}
-            disabled={!hasPrev}
-            aria-label={hasPrev
-              ? `${t("nr_previous")}: ${chapters[currentIndex - 1]?.title}`
-              : t("nr_previous")}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.2"
-              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m15 18-6-6 6-6"/>
-            </svg>
-            {t("nr_previous")}
-          </button>
-
-          <div className="nr-chapter-pos" aria-hidden="true">
-            {currentIndex + 1} / {chapters.length}
+        {/* ── checking unlock ── */}
+        {checkingUnlock && (
+          <div style={{
+            display:"flex", justifyContent:"center",
+            alignItems:"center", padding:80,
+            flexDirection:"column", gap:12, color:"#64748b",
+          }}>
+            <div className="nr-spin" aria-hidden="true"/>
+            <p style={{ fontSize:13 }}>Checking access…</p>
           </div>
+        )}
 
-          <button
-            className={`nr-nav-btn next${hasNext ? "" : " disabled"}`}
-            onClick={() => hasNext && goTo(currentIndex + 1)}
-            disabled={!hasNext}
-            aria-label={hasNext
-              ? `${t("nr_next")}: ${chapters[currentIndex + 1]?.title}`
-              : t("nr_next")}>
-            {t("nr_next")}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.2"
-              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m9 18 6-6-6-6"/>
-            </svg>
-          </button>
-        </nav>
+        {/* ── LOCKED GATE ── */}
+        {!checkingUnlock && !isUnlocked && (
+          <LockedGate
+            chapter={chapter}
+            points={points}
+            user={user}
+            unlocking={unlocking}
+            unlockError={unlockError}
+            onUnlock={handleUnlock}
+            onBuyCoins={() => navigate("/coins")}
+            onBack={() => navigate(`/novel/${novelId}`)}
+            onLogin={() => navigate("/login")}
+          />
+        )}
 
-        {/* ══ COMMENTS ══ */}
+        {/* ── UNLOCKED CONTENT ── */}
+        {!checkingUnlock && isUnlocked && (
+          <>
+            {/* translation bar */}
+            <TranslationBar
+              currentLang={displayLang}
+              onTranslate={handleTranslate}
+              translating={translating}
+              translationError={translationError}
+              isCached={isCached}
+              progressMsg={progressMsg}
+              t={t}
+            />
+
+            {/* chapter content */}
+            <article
+              className="nr-content"
+              lang={contentLang}
+              style={{ fontSize:`${fontSize}px`, lineHeight }}
+            >
+              {translating
+                ? <TranslatingSkeleton/>
+                : (displayContent || "").split("\n").map((para, i) =>
+                    para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
+                  )
+              }
+            </article>
+
+            {/* prev / next */}
+            <nav className="nr-nav-btns" aria-label="Chapter navigation">
+              <button
+                className={`nr-nav-btn${hasPrev?"":  " disabled"}`}
+                onClick={() => hasPrev && goTo(currentIndex-1)}
+                disabled={!hasPrev}
+                aria-label={hasPrev
+                  ? `${t("nr_previous")}: ${chapters[currentIndex-1]?.title}`
+                  : t("nr_previous")}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.2"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m15 18-6-6 6-6"/>
+                </svg>
+                {t("nr_previous")}
+              </button>
+              <div className="nr-chapter-pos" aria-hidden="true">
+                {currentIndex+1} / {chapters.length}
+              </div>
+              <button
+                className={`nr-nav-btn next${hasNext?"":  " disabled"}`}
+                onClick={() => hasNext && goTo(currentIndex+1)}
+                disabled={!hasNext}
+                aria-label={hasNext
+                  ? `${t("nr_next")}: ${chapters[currentIndex+1]?.title}`
+                  : t("nr_next")}>
+                {t("nr_next")}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.2"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6"/>
+                </svg>
+              </button>
+            </nav>
+          </>
+        )}
+
+        {/* ══ COMMENTS — always visible ══ */}
         <section className="nr-comments" aria-label={t("nr_comments")}>
           <h2 className="nr-comments-title">
             {t("nr_comments")}
@@ -704,9 +987,7 @@ export default function NovelReader() {
           ) : (
             <div className="nr-login-prompt">
               <p>{t("nr_login_comment")}</p>
-              <button onClick={() => navigate("/login")}>
-                {t("nr_login_btn")}
-              </button>
+              <button onClick={() => navigate("/login")}>{t("nr_login_btn")}</button>
             </div>
           )}
 
@@ -715,7 +996,7 @@ export default function NovelReader() {
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="1.5"
                 strokeLinecap="round" strokeLinejoin="round"
-                style={{ opacity: .25 }} aria-hidden="true">
+                style={{ opacity:.25 }} aria-hidden="true">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
               <p>{t("nr_no_comments")}</p>
@@ -744,19 +1025,18 @@ export default function NovelReader() {
           )}
         </section>
 
-        <div style={{ height: 80 }}/>
+        <div style={{ height:80 }}/>
       </main>
 
       {/* ══ FLOATING PILL BAR ══ */}
       <div className="nr-pill-bar" role="toolbar" aria-label="Reading actions">
-
         <button
-          className={`nr-pill-btn${liked ? " liked" : ""}`}
-          onClick={() => { setLiked(v => !v); setLikeCount(c => liked ? c-1 : c+1); }}
+          className={`nr-pill-btn${liked?" liked":""}`}
+          onClick={() => { setLiked(v=>!v); setLikeCount(c=>liked?c-1:c+1); }}
           aria-pressed={liked}
-          aria-label={liked ? "Unlike this chapter" : "Like this chapter"}>
+          aria-label={liked?"Unlike this chapter":"Like this chapter"}>
           <svg width="16" height="16" viewBox="0 0 24 24"
-            fill={liked ? "currentColor" : "none"}
+            fill={liked?"currentColor":"none"}
             stroke="currentColor" strokeWidth="2"
             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -768,12 +1048,12 @@ export default function NovelReader() {
         <div className="nr-pill-sep" aria-hidden="true"/>
 
         <button
-          className={`nr-pill-btn${bookmarked ? " bookmarked" : ""}`}
+          className={`nr-pill-btn${bookmarked?" bookmarked":""}`}
           onClick={handleBookmark}
           aria-pressed={bookmarked}
-          aria-label={bookmarked ? t("bm_remove_bookmark") : t("bm_bookmark")}>
+          aria-label={bookmarked?t("bm_remove_bookmark"):t("bm_bookmark")}>
           <svg width="16" height="16" viewBox="0 0 24 24"
-            fill={bookmarked ? "currentColor" : "none"}
+            fill={bookmarked?"currentColor":"none"}
             stroke="currentColor" strokeWidth="2"
             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
@@ -805,7 +1085,6 @@ export default function NovelReader() {
           aria-label={`Reading progress: ${scrollPct}%`}>
           {scrollPct}%
         </span>
-
       </div>
     </div>
   );

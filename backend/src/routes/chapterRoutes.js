@@ -1,6 +1,7 @@
 const express = require("express");
 const router  = express.Router();
 const auth    = require("../middleware/authMiddleware");
+
 const {
   getChaptersByNovel,
   getChapterById,
@@ -9,10 +10,28 @@ const {
   deleteChapter,
 } = require("../controllers/chapterController");
 
-router.get("/novel/:novelId", getChaptersByNovel);  // GET all chapters for a novel
-router.get("/:chapterId",     getChapterById);       // GET single chapter
-router.post("/",         auth, createChapter);       // POST create
-router.put("/:chapterId",auth, updateChapter);       // PUT update
-router.delete("/:chapterId", auth, deleteChapter);   // DELETE
+const {
+  unlockChapter,
+  getUnlockStatus,
+  getMyUnlockedChapters,
+} = require("../controllers/chapterUnlockController");
+
+/* ── public ── */
+router.get("/novel/:novelId",       getChaptersByNovel);
+
+/* ── MUST be before /:chapterId ── */
+router.get("/unlocked/me",          auth, getMyUnlockedChapters);
+
+/* ── single chapter ── */
+router.get("/:chapterId",           getChapterById);
+
+/* ── author ── */
+router.post("/",                    auth, createChapter);
+router.put("/:chapterId",           auth, updateChapter);
+router.delete("/:chapterId",        auth, deleteChapter);
+
+/* ── unlock — MUST be after /unlocked/me ── */
+router.get("/:id/unlock-status",    auth, getUnlockStatus);
+router.post("/:id/unlock",          auth, unlockChapter);
 
 module.exports = router;

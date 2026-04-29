@@ -40,3 +40,21 @@ export const deleteChapter = async (id, token) => {
   });
   return res.data;
 };
+
+/* POST /api/chapters/:id/unlock */
+export const unlockChapter = async (chapterId) => {
+  const res = await API.post(`/chapters/${chapterId}/unlock`);
+  return res.data;
+};
+
+/* GET /api/chapters/:id/unlock-status */
+export const getUnlockStatus = async (chapterId) => {
+  const res = await API.get(`/chapters/${chapterId}/unlock-status`);
+  return res.data;
+};
+
+/* GET /api/chapters/unlocked/me */
+export const getMyUnlockedChapters = async () => {
+  const res = await API.get("/chapters/unlocked/me");
+  return res.data;
+};

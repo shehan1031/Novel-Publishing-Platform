@@ -1,5 +1,9 @@
-// src/services/pointsService.js
 import API from "./api";
+
+export const getPoints = async () => {
+  const response = await API.get("/points/me");
+  return response.data;
+};
 
 export const purchasePoints = async (amount) => {
   const response = await API.post("/points/purchase", { amount });
@@ -11,18 +15,34 @@ export const deductPoints = async (amount) => {
   return response.data;
 };
 
-export const getPoints = async () => {
-  const response = await API.get("/points/me");
+export const getPackages = async () => {
+  const response = await API.get("/points/packages");
   return response.data;
 };
 
-// Final safe version - no more console spam
+export const createOrder = async (packageId) => {
+  const response = await API.post("/points/create-order", {
+    packageId, currency: "LKR",
+  });
+  return response.data;
+};
+
+export const getPurchaseHistory = async () => {
+  const response = await API.get("/points/history");
+  return response.data;
+};
+
+export const getLedger = async () => {
+  const response = await API.get("/points/ledger");
+  return response.data;
+};
+
 export const getSubscriptionStatus = async () => {
   try {
-    const response = await API.get("/subscription/status");
+    /* ← was "/subscription/status" — missing "/points/" prefix */
+    const response = await API.get("/points/subscription/status");
     return response.data;
-  } catch (error) {
-    // Silent fail - no console warning spam
+  } catch {
     return { active: false, plan: null };
   }
 };

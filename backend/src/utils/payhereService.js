@@ -1,37 +1,65 @@
 const crypto = require("crypto");
-
-const MERCHANT_ID     = process.env.PAYHERE_MERCHANT_ID;
-const MERCHANT_SECRET = process.env.PAYHERE_MERCHANT_SECRET;
-
-// Hash for create-order
-// Formula: MD5(merchantId + orderId + amount + currency + MD5(secret).toUpperCase())
-const generateHash = (orderId, amount, currency = "LKR") => {
-  const secretHash = crypto
-    .createHash("md5")
-    .update(MERCHANT_SECRET)
-    .digest("hex")
-    .toUpperCase();
-
-  const raw = `${MERCHANT_ID}${orderId}${parseFloat(amount).toFixed(2)}${currency}${secretHash}`;
-  return crypto.createHash("md5").update(raw).digest("hex").toUpperCase();
+ 
+const md5 = (str) =>
+  crypto.createHash("md5").update(str).digest("hex");
+ 
+/*
+  PayHere hash formula (from official docs):
+  
+  secret_hash = strtoupper(md5(merchant_secret))
+  hash = strtoupper(md5(merchant_id + order_id + amount + currency + secret_hash))
+ 
+  The merchant_secret must be used RAW — exactly as shown in the
+  PayHere dashboard (the Base64 string IS the secret, use it as-is).
+*/
+const getSecret = () => {
+  const secret = process.env.PAYHERE_MERCHANT_SECRET || "";
+  return secret.trim();
 };
-
-// Verify webhook hash from PayHere notify
+ 
+const generateHash = (orderId, amount, currency = "LKR") => {
+  const merchantId     = (process.env.PAYHERE_MERCHANT_ID || "").trim();
+  const merchantSecret = getSecret();
+ 
+  if (!merchantId || !merchantSecret) {
+    throw new Error("PAYHERE_MERCHANT_ID or PAYHERE_MERCHANT_SECRET not set in .env");
+  }
+ 
+  const formattedAmount = parseFloat(amount).toFixed(2);
+ 
+  // PayHere official formula
+  const secretHash = md5(merchantSecret).toUpperCase();
+  const raw        = `${merchantId}${orderId}${formattedAmount}${currency}${secretHash}`;
+ 
+  console.log("[PayHere] generateHash input:", raw);
+  console.log("[PayHere] secretHash used   :", secretHash);
+ 
+  return md5(raw).toUpperCase();
+};
+ 
 const verifyNotifyHash = ({ orderId, amount, currency, statusCode, md5sig }) => {
-  const secretHash = crypto
-    .createHash("md5")
-    .update(MERCHANT_SECRET)
-    .digest("hex")
-    .toUpperCase();
-
-  const raw = `${MERCHANT_ID}${orderId}${parseFloat(amount).toFixed(2)}${currency}${statusCode}${secretHash}`;
-  const expected = crypto.createHash("md5").update(raw).digest("hex").toUpperCase();
+  const merchantId     = (process.env.PAYHERE_MERCHANT_ID || "").trim();
+  const merchantSecret = getSecret();
+ 
+  if (!merchantId || !merchantSecret) return false;
+ 
+  const formattedAmount = parseFloat(amount).toFixed(2);
+  const secretHash      = md5(merchantSecret).toUpperCase();
+  const raw             = `${merchantId}${orderId}${formattedAmount}${currency}${statusCode}${secretHash}`;
+  const expected        = md5(raw).toUpperCase();
+ 
+  console.log("[PayHere] verifyNotifyHash");
+  console.log("[PayHere] secretHash used:", secretHash);
+  console.log("[PayHere] Expected       :", expected);
+  console.log("[PayHere] Received       :", md5sig?.toUpperCase());
+  console.log("[PayHere] Match          :", expected === md5sig?.toUpperCase());
+ 
   return expected === md5sig?.toUpperCase();
 };
-
+ 
 const generateOrderId = () => {
   const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `NVL-${rand}-${Date.now()}`;
 };
-
+ 
 module.exports = { generateHash, verifyNotifyHash, generateOrderId };
