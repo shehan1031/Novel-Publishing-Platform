@@ -18,7 +18,7 @@ const COIN_PACKAGES = {
 const COINS_PER_LKR  = 10;
 const AUTHOR_SHARE   = 0.60;
 const PLATFORM_SHARE = 0.40;
-const DEFAULT_COST   = 10;
+/* removed DEFAULT_COST — only used in chapterUnlockController */
 
 /* ════════════════════════════════════════
    BASIC POINTS
@@ -45,14 +45,6 @@ exports.deductPoints = async (req, res, next) => {
     await user.save();
     await Transaction.create({ reader: user._id, amount, type: "deduction" });
     res.json({ balance: user.balance });
-  } catch (err) { next(err); }
-};
-
-exports.getCurrentPoints = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user.id).select("balance");
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ balance: user.balance, points: user.balance });
   } catch (err) { next(err); }
 };
 
@@ -204,9 +196,7 @@ exports.handleNotify = async (req, res) => {
 };
 
 /* ════════════════════════════════════════
-   SPEND COINS — chapter unlock via points route
-   (alternative path, chapterUnlockController
-    is the primary path via /api/chapters/:id/unlock)
+   SPEND COINS
 ════════════════════════════════════════ */
 
 exports.spendCoins = async (req, res, next) => {
@@ -225,7 +215,6 @@ exports.spendCoins = async (req, res, next) => {
     if ((user.balance || 0) < coinCost)
       return res.status(400).json({ message: "Insufficient coins." });
 
-    /* prevent double spend */
     const existing = await PointTransaction.findOne({
       user:    req.user.id,
       chapter: chapterId,
