@@ -1,9 +1,7 @@
-const express     = require("express");
-const router      = express.Router();
-const auth        = require("../middleware/authMiddleware");
-const Novel       = require("../models/Novel");
-const Transaction = require("../models/Transaction");
-const { getAuthorNovels }       = require("../controllers/novelController");
+const express = require("express");
+const router  = require("express").Router();
+const auth    = require("../middleware/authMiddleware");
+const { getAuthorNovels }           = require("../controllers/novelController");
 const { getDashboard, getEarnings } = require("../controllers/authorController");
 
 /* GET /api/author/novels — author's novels (all statuses) */
