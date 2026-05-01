@@ -1,4 +1,3 @@
-const express = require("express");
 const router  = require("express").Router();
 const auth    = require("../middleware/authMiddleware");
 const { getAuthorNovels }           = require("../controllers/novelController");
