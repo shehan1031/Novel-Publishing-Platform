@@ -25,6 +25,7 @@ const Navbar = () => {
 
   useEffect(() => {
     if (user?.role === "reader" && token) fetchPoints?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleLogout = async () => {

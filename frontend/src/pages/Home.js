@@ -174,6 +174,7 @@ export default function Home() {
   const heroRef  = useRef(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchNovels(); }, []);
 
   const onMouseMove = e => {

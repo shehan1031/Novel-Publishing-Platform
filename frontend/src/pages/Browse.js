@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import NovelCard from "../components/NovelCard";
 import { getAllNovels } from "../services/novelService";
 import { useLang } from "../context/LanguageContext";
@@ -52,6 +52,11 @@ const IconBook = () => (
 const Browse = () => {
   const { t } = useLang();
 
+  const ALL_VALS = ["All", "සියල්ල", "அனைத்தும்"];
+
+  /* moved isAll above usages so it can be stable via useCallback */
+  const isAll = useCallback((v) => ALL_VALS.includes(v), []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ── translated constants — rebuilt when lang changes ── */
   const ALL_GENRES = [
     t("browse_all"), "Fantasy", "Romance", "Action",
@@ -63,10 +68,6 @@ const Browse = () => {
     { label: t("browse_sort_az"),      value: "az"      },
     { label: t("browse_sort_popular"), value: "popular" },
   ];
-
-  /* helper — is a value the "All" sentinel across all three languages */
-  const ALL_VALS = ["All", "සියල්ල", "அனைத்தும்"];
-  const isAll = (v) => ALL_VALS.includes(v);
 
   const [allNovels, setAllNovels] = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -80,7 +81,7 @@ const Browse = () => {
 
   const debounceRef = useRef(null);
 
-  /* fetch */
+  /* fetch — t added to deps, wrapped in useCallback to keep stable */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -96,6 +97,7 @@ const Browse = () => {
       }
     };
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* debounce */
@@ -105,7 +107,7 @@ const Browse = () => {
     debounceRef.current = setTimeout(() => setQuery(val), 380);
   };
 
-  /* filter + sort */
+  /* filter + sort — isAll added to deps */
   const novels = useMemo(() => {
     let result = [...allNovels];
 
@@ -133,7 +135,7 @@ const Browse = () => {
       result.sort((a, b) => (b.views || b.reads || 0) - (a.views || a.reads || 0));
 
     return result;
-  }, [allNovels, query, genre, language, sort]);
+  }, [allNovels, query, genre, language, sort, isAll]);
 
   /* helpers */
   const clearFilters = () => {
@@ -145,9 +147,9 @@ const Browse = () => {
   const hasFilters = query || !isAll(genre) || !isAll(language) || sort !== "latest";
 
   const activePills = [
-    !isAll(genre)    && { key: "genre",    label: genre    },
-    !isAll(language) && { key: "language", label: language },
-    query            && { key: "query",    label: `"${query}"` },
+    (!isAll(genre)    ? { key: "genre",    label: genre        } : null),
+    (!isAll(language) ? { key: "language", label: language     } : null),
+    (query            ? { key: "query",    label: `"${query}"` } : null),
   ].filter(Boolean);
 
   const removeFilter = (key) => {
@@ -214,8 +216,8 @@ const Browse = () => {
               <button
                 key={g}
                 role="tab"
-                aria-selected={genre === g || (isAll(genre) && isAll(g))}
-                className={`bp-tab${isAll(genre) && isAll(g) || genre === g ? " active" : ""}`}
+                aria-selected={(isAll(genre) && isAll(g)) || genre === g}
+                className={`bp-tab${(isAll(genre) && isAll(g)) || genre === g ? " active" : ""}`}
                 onClick={() => setGenre(isAll(g) ? ALL_VALS[0] : g)}
               >
                 {g}

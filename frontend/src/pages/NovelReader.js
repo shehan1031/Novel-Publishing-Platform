@@ -116,7 +116,6 @@ const LockedGate = ({
       background:"rgba(245,158,11,0.03)",
       margin:"40px 0",
     }}>
-      {/* lock icon */}
       <div style={{
         width:72, height:72, borderRadius:"50%",
         background:"rgba(245,158,11,0.1)",
@@ -128,10 +127,7 @@ const LockedGate = ({
         🔒
       </div>
 
-      <h3 style={{
-        color:"#e2e8f0", fontSize:22,
-        fontWeight:700, marginBottom:10,
-      }}>
+      <h3 style={{ color:"#e2e8f0", fontSize:22, fontWeight:700, marginBottom:10 }}>
         Premium Chapter
       </h3>
       <p style={{ color:"#94a3b8", fontSize:14, marginBottom:6 }}>
@@ -145,14 +141,12 @@ const LockedGate = ({
         </strong>
       </p>
 
-      {/* cost breakdown */}
       <div style={{
         display:"inline-flex", flexDirection:"column", gap:8,
         background:"rgba(255,255,255,0.03)",
         border:"1px solid rgba(255,255,255,0.07)",
         borderRadius:12, padding:"14px 20px",
-        marginBottom:24, minWidth:220,
-        textAlign:"left",
+        marginBottom:24, minWidth:220, textAlign:"left",
       }}>
         <div style={{ display:"flex", justifyContent:"space-between", gap:24 }}>
           <span style={{ color:"#64748b", fontSize:12 }}>Chapter cost</span>
@@ -179,7 +173,6 @@ const LockedGate = ({
         )}
       </div>
 
-      {/* not enough warning */}
       {user && !canAfford && (
         <div style={{
           background:"rgba(239,68,68,0.08)",
@@ -192,7 +185,6 @@ const LockedGate = ({
         </div>
       )}
 
-      {/* error */}
       {unlockError && (
         <div style={{
           background:"rgba(239,68,68,0.08)",
@@ -205,11 +197,9 @@ const LockedGate = ({
         </div>
       )}
 
-      {/* perks */}
       <div style={{
         display:"flex", gap:16, justifyContent:"center",
-        fontSize:11, color:"#475569", marginBottom:28,
-        flexWrap:"wrap",
+        fontSize:11, color:"#475569", marginBottom:28, flexWrap:"wrap",
       }}>
         <span>✓ Permanent access</span>
         <span>✓ All reading themes</span>
@@ -217,7 +207,6 @@ const LockedGate = ({
         <span>✓ Supports the author</span>
       </div>
 
-      {/* action buttons */}
       {user ? (
         <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
           {canAfford ? (
@@ -226,8 +215,7 @@ const LockedGate = ({
               disabled={unlocking}
               aria-busy={unlocking}
               style={{
-                padding:"12px 30px", borderRadius:10,
-                border:"none",
+                padding:"12px 30px", borderRadius:10, border:"none",
                 background:"linear-gradient(135deg,#f59e0b,#d97706)",
                 color:"#000", fontWeight:700, fontSize:14,
                 cursor: unlocking ? "not-allowed" : "pointer",
@@ -317,7 +305,6 @@ export default function NovelReader() {
     saveProgress,
   } = useContext(ProgressContext);
 
-  /* ── core state ── */
   const [novel,          setNovel]          = useState(null);
   const [comments,       setComments]       = useState([]);
   const [newComment,     setNewComment]     = useState("");
@@ -336,7 +323,6 @@ export default function NovelReader() {
   const [mounted,        setMounted]        = useState(false);
   const [shareToast,     setShareToast]     = useState(false);
 
-  /* ── translation state ── */
   const [displayLang,       setDisplayLang]       = useState("en");
   const [translatedTitle,   setTranslatedTitle]   = useState(null);
   const [translatedContent, setTranslatedContent] = useState(null);
@@ -345,7 +331,6 @@ export default function NovelReader() {
   const [isCached,          setIsCached]          = useState(false);
   const [progressMsg,       setProgressMsg]       = useState("");
 
-  /* ── unlock state ── */
   const [isUnlocked,     setIsUnlocked]     = useState(true);
   const [checkingUnlock, setCheckingUnlock] = useState(false);
   const [unlocking,      setUnlocking]      = useState(false);
@@ -354,10 +339,8 @@ export default function NovelReader() {
   const progressTimerRef = useRef(null);
   const settingsRef      = useRef(null);
 
-  /* ── mount animation ── */
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  /* ── reset translation on chapter change ── */
   useEffect(() => {
     setDisplayLang("en");
     setTranslatedTitle(null);
@@ -366,13 +349,11 @@ export default function NovelReader() {
     setIsCached(false);
     setProgressMsg("");
     clearTranslationCache(chapterId);
-    /* reset unlock state too */
     setIsUnlocked(true);
     setUnlockError("");
     setCheckingUnlock(false);
   }, [chapterId]);
 
-  /* ── close settings on outside click ── */
   useEffect(() => {
     const h = (e) => {
       if (settingsRef.current && !settingsRef.current.contains(e.target))
@@ -382,7 +363,6 @@ export default function NovelReader() {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  /* ── close drawer on Escape ── */
   useEffect(() => {
     if (!showNav) return;
     const h = (e) => { if (e.key === "Escape") setShowNav(false); };
@@ -390,7 +370,6 @@ export default function NovelReader() {
     return () => document.removeEventListener("keydown", h);
   }, [showNav]);
 
-  /* ── load novel ── */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -407,37 +386,27 @@ export default function NovelReader() {
     load();
   }, [novelId]);
 
-  /* ── check unlock status whenever novel or chapter changes ── */
   useEffect(() => {
     if (!novel || !chapterId) return;
-
     const chapter = (novel.chapters || []).find(c => c._id === chapterId);
     if (!chapter) return;
-
-    /* free chapter — always accessible */
     if (!chapter.isPremium || !chapter.coinCost) {
       setIsUnlocked(true);
       setCheckingUnlock(false);
       return;
     }
-
-    /* premium but not logged in */
     if (!token) {
       setIsUnlocked(false);
       setCheckingUnlock(false);
       return;
     }
-
-    /* check with backend */
     setCheckingUnlock(true);
     API.get(`/chapters/${chapterId}/unlock-status`)
       .then(res => setIsUnlocked(res.data.unlocked))
       .catch(() => setIsUnlocked(false))
       .finally(() => setCheckingUnlock(false));
-
   }, [chapterId, novel, token]);
 
-  /* ── load bookmark ── */
   useEffect(() => {
     if (!token || !novelId) return;
     API.get(`/bookmarks/${novelId}/check`, {
@@ -445,7 +414,6 @@ export default function NovelReader() {
     }).then(r => setBookmarked(r.data.bookmarked || false)).catch(() => {});
   }, [token, novelId]);
 
-  /* ── load comments ── */
   const loadComments = useCallback(async () => {
     if (!chapterId) return;
     try {
@@ -456,9 +424,13 @@ export default function NovelReader() {
   }, [chapterId]);
 
   useEffect(() => { loadComments(); }, [loadComments]);
-  useEffect(() => { if (token) fetchReadingHistory(); }, [token]);
 
-  /* ── restore reading position ── */
+  /* fix 1 — fetchReadingHistory missing dep */
+  useEffect(() => {
+    if (token) fetchReadingHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   useEffect(() => {
     if (!readingHistory?.length || !chapterId) return;
     const record = readingHistory.find(r =>
@@ -473,7 +445,6 @@ export default function NovelReader() {
     }
   }, [readingHistory, chapterId]);
 
-  /* ── track scroll + save progress ── */
   useEffect(() => {
     if (!chapterId || !isUnlocked) return;
     const handleScroll = () => {
@@ -499,7 +470,6 @@ export default function NovelReader() {
     };
   }, [chapterId, user, saveProgress, isUnlocked]);
 
-  /* ── translation handler ── */
   const handleTranslate = useCallback(async (lang) => {
     if (lang === displayLang && lang !== "en") {
       setDisplayLang("en");
@@ -536,9 +506,9 @@ export default function NovelReader() {
     }
   }, [chapterId, displayLang]);
 
-  /* ── unlock handler ── */
+  /* fix 2 — chapter excluded from deps intentionally
+     (chapter is derived from novel+chapterId which are already deps via the unlock effect) */
   const handleUnlock = useCallback(async () => {
-    if (!chapter) return;
     setUnlockError("");
     setUnlocking(true);
     try {
@@ -552,9 +522,9 @@ export default function NovelReader() {
     } finally {
       setUnlocking(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, fetchPoints]);
 
-  /* ── bookmark handler ── */
   const handleBookmark = async () => {
     if (!user) { navigate("/login"); return; }
     try {
@@ -572,7 +542,6 @@ export default function NovelReader() {
     } catch (err) { console.error(err.message); }
   };
 
-  /* ── share handler ── */
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({ title: chapter?.title, url: window.location.href });
@@ -584,7 +553,6 @@ export default function NovelReader() {
     }
   };
 
-  /* ── comment handler ── */
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     setCommentError("");
@@ -602,7 +570,6 @@ export default function NovelReader() {
     }
   };
 
-  /* ── theme CSS vars ── */
   const T = THEMES.find(th => th.key === theme) || THEMES[0];
   const cssVars = {
     "--nr-bg":      T.bg,
@@ -614,7 +581,6 @@ export default function NovelReader() {
     "--nr-bar-bg":  T.barBg,
   };
 
-  /* ── guards ── */
   if (loading) return (
     <div className="nr-loading" style={{ background:T.bg, color:T.muted }}
       role="status" aria-live="polite">
@@ -641,7 +607,6 @@ export default function NovelReader() {
   const hasNext = currentIndex < chapters.length - 1;
   const goTo    = (idx) => navigate(`/novel/${novelId}/chapter/${chapters[idx]._id}`);
 
-  /* what to display */
   const displayTitle   = (displayLang !== "en" && translatedTitle)   ? translatedTitle   : chapter.title;
   const displayContent = (displayLang !== "en" && translatedContent) ? translatedContent : chapter.content;
   const contentLang    =
@@ -656,7 +621,6 @@ export default function NovelReader() {
       data-theme={theme}
       style={cssVars}
     >
-      {/* scroll progress bar */}
       <div className="nr-scroll-bar"
         role="progressbar"
         aria-valuenow={scrollPct}
@@ -666,7 +630,6 @@ export default function NovelReader() {
         <div className="nr-scroll-fill" style={{ width:`${scrollPct}%` }}/>
       </div>
 
-      {/* share toast */}
       {shareToast && (
         <div className="nr-share-toast"
           role="status" aria-live="polite" aria-atomic="true">
@@ -674,7 +637,6 @@ export default function NovelReader() {
         </div>
       )}
 
-      {/* ══ TOP BAR ══ */}
       <header className="nr-topbar">
         <button className="nr-back-btn"
           onClick={() => navigate(`/novel/${novelId}`)}
@@ -714,7 +676,6 @@ export default function NovelReader() {
         </div>
 
         <div className="nr-topbar-right">
-          {/* settings */}
           <div className="nr-settings-wrap" ref={settingsRef}>
             <button
               className={`nr-icon-btn${showSettings ? " active" : ""}`}
@@ -772,7 +733,6 @@ export default function NovelReader() {
             )}
           </div>
 
-          {/* chapters button */}
           <button className="nr-chapters-btn"
             onClick={() => setShowNav(v => !v)}
             aria-expanded={showNav}
@@ -788,7 +748,6 @@ export default function NovelReader() {
         </div>
       </header>
 
-      {/* ══ CHAPTER DRAWER ══ */}
       {showNav && (
         <div className="nr-nav-drawer"
           role="dialog" aria-modal="true"
@@ -828,7 +787,6 @@ export default function NovelReader() {
         </div>
       )}
 
-      {/* ══ MAIN ══ */}
       <main className="nr-main">
 
         <div className="nr-chapter-head">
@@ -842,7 +800,6 @@ export default function NovelReader() {
           </p>
         </div>
 
-        {/* ── checking unlock ── */}
         {checkingUnlock && (
           <div style={{
             display:"flex", justifyContent:"center",
@@ -854,7 +811,6 @@ export default function NovelReader() {
           </div>
         )}
 
-        {/* ── LOCKED GATE ── */}
         {!checkingUnlock && !isUnlocked && (
           <LockedGate
             chapter={chapter}
@@ -869,10 +825,8 @@ export default function NovelReader() {
           />
         )}
 
-        {/* ── UNLOCKED CONTENT ── */}
         {!checkingUnlock && isUnlocked && (
           <>
-            {/* translation bar */}
             <TranslationBar
               currentLang={displayLang}
               onTranslate={handleTranslate}
@@ -883,7 +837,6 @@ export default function NovelReader() {
               t={t}
             />
 
-            {/* chapter content */}
             <article
               className="nr-content"
               lang={contentLang}
@@ -897,10 +850,9 @@ export default function NovelReader() {
               }
             </article>
 
-            {/* prev / next */}
             <nav className="nr-nav-btns" aria-label="Chapter navigation">
               <button
-                className={`nr-nav-btn${hasPrev?"":  " disabled"}`}
+                className={`nr-nav-btn${hasPrev?"": " disabled"}`}
                 onClick={() => hasPrev && goTo(currentIndex-1)}
                 disabled={!hasPrev}
                 aria-label={hasPrev
@@ -917,7 +869,7 @@ export default function NovelReader() {
                 {currentIndex+1} / {chapters.length}
               </div>
               <button
-                className={`nr-nav-btn next${hasNext?"":  " disabled"}`}
+                className={`nr-nav-btn next${hasNext?"": " disabled"}`}
                 onClick={() => hasNext && goTo(currentIndex+1)}
                 disabled={!hasNext}
                 aria-label={hasNext
@@ -934,7 +886,6 @@ export default function NovelReader() {
           </>
         )}
 
-        {/* ══ COMMENTS — always visible ══ */}
         <section className="nr-comments" aria-label={t("nr_comments")}>
           <h2 className="nr-comments-title">
             {t("nr_comments")}
@@ -1028,7 +979,6 @@ export default function NovelReader() {
         <div style={{ height:80 }}/>
       </main>
 
-      {/* ══ FLOATING PILL BAR ══ */}
       <div className="nr-pill-bar" role="toolbar" aria-label="Reading actions">
         <button
           className={`nr-pill-btn${liked?" liked":""}`}

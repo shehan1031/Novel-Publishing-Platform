@@ -242,7 +242,9 @@ export default function ChapterList({ chapters = [], novelId }) {
   const [modalChapter, setModalChapter] = useState(null);
   const [unlocking,    setUnlocking]    = useState(false);
   const [toast,        setToast]        = useState(null);
-  const [loadingIds,   setLoadingIds]   = useState(true);
+
+  /* ── loadingIds removed — was assigned but never read ── */
+  const [, setLoadingIds] = useState(true);
 
   const loadUnlocked = useCallback(async () => {
     if (!token) { setLoadingIds(false); return; }
@@ -284,7 +286,6 @@ export default function ChapterList({ chapters = [], novelId }) {
     if (!modalChapter) return;
     setUnlocking(true);
     try {
-      /* correct endpoint — calls chapterUnlockController.unlockChapter */
       await API.post(`/chapters/${modalChapter._id}/unlock`);
 
       setUnlockedIds(prev => new Set([...prev, modalChapter._id]));
@@ -297,7 +298,6 @@ export default function ChapterList({ chapters = [], novelId }) {
       showToast(`✓ "${modalChapter.title}" unlocked! Spent ${cost} coins`);
       setModalChapter(null);
 
-      /* go straight to the chapter */
       navigate(`/novel/${novelId}/chapter/${modalChapter._id}`);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Unlock failed";

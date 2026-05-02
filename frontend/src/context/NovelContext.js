@@ -5,12 +5,13 @@ import API from "../services/api";
 export const NovelContext = createContext();
 
 export const NovelProvider = ({ children }) => {
-  const { user } = useContext(AuthContext);
+  /* removed unused `user` from destructuring */
+  useContext(AuthContext);
 
   const [novels,  setNovels]  = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Public novels — published only, no auth needed
+  /* Public novels — published only, no auth needed */
   const fetchNovels = useCallback(async () => {
     setLoading(true);
     try {
@@ -24,12 +25,12 @@ export const NovelProvider = ({ children }) => {
     }
   }, []);
 
-  // ✅ Author's own novels — all statuses, auth required
+  /* Author's own novels — all statuses, auth required */
   const fetchAuthorNovels = useCallback(async () => {
     if (!localStorage.getItem("token")) return;
     setLoading(true);
     try {
-      const res = await API.get("/author/novels"); // ✅ correct endpoint
+      const res = await API.get("/author/novels");
       setNovels(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.warn("fetchAuthorNovels failed:", err.message);
@@ -54,8 +55,7 @@ export const NovelProvider = ({ children }) => {
     }
   }, []);
 
-  // ✅ On mount: always load public novels only
-  // fetchAuthorNovels is called explicitly from AuthorDashboard only
+  /* On mount: always load public novels only */
   useEffect(() => {
     fetchNovels();
   }, [fetchNovels]);

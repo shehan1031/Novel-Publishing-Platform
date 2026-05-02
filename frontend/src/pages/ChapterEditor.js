@@ -150,7 +150,8 @@ export default function AuthorChapterEditor() {
       .finally(() => setLoading(false));
   }, [chapterId, token]);
 
-  /* shortcuts */
+  /* shortcuts — handleSave intentionally excluded from deps
+     to avoid re-registering listener on every state change */
   useEffect(() => {
     const h = (e) => {
       const m = e.ctrlKey || e.metaKey;
@@ -160,6 +161,7 @@ export default function AuthorChapterEditor() {
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullscreen, showFind, title, isPremium, releaseAt]);
 
   const pollFmt = useCallback(() => {
@@ -223,7 +225,7 @@ export default function AuthorChapterEditor() {
   return (
     <div className={`ce${fullscreen ? " fs" : ""}${mounted ? " in" : ""}`}>
 
-      {/* ══ TITLE BAR (top chrome) ══ */}
+      {/* ══ TITLE BAR ══ */}
       <div className="ce-titlebar">
         <button className="ce-tbback" onClick={() => navigate(`/author/novel/${novelId}`)}>
           <span className="ce-tbback-ico">{IC.back}</span>
@@ -237,7 +239,6 @@ export default function AuthorChapterEditor() {
         </div>
 
         <div className="ce-tbright">
-          {/* save state */}
           <span className={`ce-savestate ${saveState}`}>
             {saveState === "saving" && <><span className="ld-spin"/>Saving…</>}
             {saveState === "saved"  && <>✓ Saved</>}
@@ -288,13 +289,9 @@ export default function AuthorChapterEditor() {
 
       {/* ══ TOOLBAR ══ */}
       <div className="ce-toolbar" onMouseDown={e => e.preventDefault()}>
-
-        {/* Undo/redo */}
         <Btn title="Undo (Ctrl+Z)" onClick={() => exec("undo")}>{IC.undo}</Btn>
         <Btn title="Redo (Ctrl+Y)" onClick={() => exec("redo")}>{IC.redo}</Btn>
         <Sep/>
-
-        {/* Font */}
         <select className="tb-sel" value={fontFam} onChange={e => applyFont(e.target.value)} title="Font family">
           <option>Garamond</option>
           <option>Sans</option>
@@ -307,8 +304,6 @@ export default function AuthorChapterEditor() {
           ))}
         </select>
         <Sep/>
-
-        {/* Style */}
         <select className="tb-sel tb-hd" defaultValue="" title="Paragraph style"
           onChange={e => { if(e.target.value) exec("formatBlock", e.target.value); e.target.value=""; }}>
           <option value="" disabled>Style</option>
@@ -321,15 +316,11 @@ export default function AuthorChapterEditor() {
           <option value="pre">Code</option>
         </select>
         <Sep/>
-
-        {/* Text formatting */}
         <Btn title="Bold (Ctrl+B)"      active={fmt.bold}          onClick={() => exec("bold")}>{IC.bold}</Btn>
         <Btn title="Italic (Ctrl+I)"    active={fmt.italic}        onClick={() => exec("italic")}>{IC.italic}</Btn>
         <Btn title="Underline (Ctrl+U)" active={fmt.underline}     onClick={() => exec("underline")}>{IC.under}</Btn>
         <Btn title="Strikethrough"      active={fmt.strikeThrough} onClick={() => exec("strikeThrough")}>{IC.strike}</Btn>
         <Sep/>
-
-        {/* Color */}
         <label className="tb-clr" title="Text color">
           <span className="tb-clr-A">A</span>
           <input type="color" defaultValue="#1a1410" onChange={e => exec("foreColor", e.target.value)}/>
@@ -339,22 +330,16 @@ export default function AuthorChapterEditor() {
           <input type="color" defaultValue="#fff9c4" onChange={e => exec("hiliteColor", e.target.value)}/>
         </label>
         <Sep/>
-
-        {/* Align */}
         <Btn title="Left"    active={fmt.justifyLeft}   onClick={() => exec("justifyLeft")}>{IC.al}</Btn>
         <Btn title="Center"  active={fmt.justifyCenter} onClick={() => exec("justifyCenter")}>{IC.ac}</Btn>
         <Btn title="Right"   active={fmt.justifyRight}  onClick={() => exec("justifyRight")}>{IC.ar}</Btn>
         <Btn title="Justify" active={fmt.justifyFull}   onClick={() => exec("justifyFull")}>{IC.aj}</Btn>
         <Sep/>
-
-        {/* Lists + indent */}
         <Btn title="Bullet list"   active={fmt.insertUnorderedList} onClick={() => exec("insertUnorderedList")}>{IC.ul}</Btn>
         <Btn title="Numbered list" active={fmt.insertOrderedList}   onClick={() => exec("insertOrderedList")}>{IC.ol}</Btn>
         <Btn title="Indent"        onClick={() => exec("indent")}>{IC.ind}</Btn>
         <Btn title="Outdent"       onClick={() => exec("outdent")}>{IC.out}</Btn>
         <Sep/>
-
-        {/* Insert */}
         <Btn title="Hyperlink" onClick={() => { const u=prompt("URL:"); if(u) exec("createLink",u); }}>{IC.link}</Btn>
         <Btn title="Divider"   onClick={() => exec("insertHorizontalRule")}>{IC.hr}</Btn>
         <Btn title="Scene break ✦✦✦" onClick={insertSceneBreak}>
@@ -363,20 +348,13 @@ export default function AuthorChapterEditor() {
         <Btn title="Superscript" onClick={() => exec("superscript")}>x<sup style={{fontSize:"7px"}}>2</sup></Btn>
         <Btn title="Subscript"   onClick={() => exec("subscript")}>x<sub style={{fontSize:"7px"}}>2</sub></Btn>
         <Sep/>
-
         <Btn title="Clear formatting" onClick={() => exec("removeFormat")} danger>{IC.clear}</Btn>
       </div>
 
       {/* ══ EDITOR BODY ══ */}
       <div className="ce-workspace">
-
-        {/* page */}
         <div className="ce-page">
-
-          {/* chapter eyebrow */}
           <div className="ce-eyebrow">Chapter</div>
-
-          {/* title field */}
           <input
             className="ce-title"
             type="text"
@@ -386,8 +364,6 @@ export default function AuthorChapterEditor() {
             maxLength={200}
             spellCheck
           />
-
-          {/* gold ornament separator */}
           <div className="ce-orn">
             <span className="ce-orn-line"/>
             <svg width="20" height="11" viewBox="0 0 20 11">
@@ -395,8 +371,6 @@ export default function AuthorChapterEditor() {
             </svg>
             <span className="ce-orn-line"/>
           </div>
-
-          {/* rich text area */}
           <div
             ref={editorRef}
             className="ce-body"
@@ -409,19 +383,13 @@ export default function AuthorChapterEditor() {
             onSelect={pollFmt}
             spellCheck
           />
-
-          {/* error */}
           {error && (
             <div className="ce-error">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               {error}
             </div>
           )}
-
-          {/* stats */}
           <Stats text={plainText}/>
-
-          {/* keyboard hints */}
           <div className="ce-hints">
             {[["Ctrl B","bold"],["Ctrl I","italic"],["Ctrl U","underline"],["Ctrl S","save"],["Ctrl F","find"],["Ctrl Z","undo"]].map(([k,v])=>(
               <span key={k}><kbd>{k}</kbd>{v}</span>
