@@ -243,10 +243,24 @@ export default function Signup() {
               }
             </button>
 
+            {/* ── fixed: replaced <a href="#"> with buttons for accessibility ── */}
             <p className="af-terms">
               {t("auth_terms_prefix")}{" "}
-              <a href="#">{t("footer_terms")}</a> {t("auth_and")}{" "}
-              <a href="#">{t("footer_privacy")}</a>
+              <button
+                type="button"
+                className="auth-link"
+                onClick={() => navigate("/terms")}
+              >
+                {t("footer_terms")}
+              </button>
+              {" "}{t("auth_and")}{" "}
+              <button
+                type="button"
+                className="auth-link"
+                onClick={() => navigate("/privacy")}
+              >
+                {t("footer_privacy")}
+              </button>
             </p>
           </form>
 

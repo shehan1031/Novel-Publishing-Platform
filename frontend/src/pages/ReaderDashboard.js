@@ -78,6 +78,7 @@ export default function ReaderDashboard() {
     }
   }, []);
 
+  /* all four fetch functions intentionally omitted — run once on mount only */
   useEffect(() => {
     if (!localStorage.getItem("token")) {
       setLoading(false);
@@ -95,13 +96,13 @@ export default function ReaderDashboard() {
       }
     };
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (novels.length > 0) setRecentlyViewed(novels.slice(-3));
   }, [novels]);
 
-  /* nav rebuilt on lang change */
   const NAV = [
     { key:"library",   label: t("rd_my_library"), icon: IC.home   },
     { key:"bookmarks", label: t("rd_bookmarks"),  icon: IC.book   },
@@ -110,9 +111,8 @@ export default function ReaderDashboard() {
     { key:"top",       label: t("rd_top_rated"),  icon: IC.star   },
   ];
 
-  /* stats rebuilt on lang change */
   const STATS = [
-    { color:"blue",   emoji:"📚", val: novels.length,        lbl: t("rd_novels_count"),    trend: t("rd_explore"),    up:true, onClick:null },
+    { color:"blue",   emoji:"📚", val: novels.length,         lbl: t("rd_novels_count"),    trend: t("rd_explore"),    up:true, onClick:null },
     { color:"teal",   emoji:"📖", val: readingHistory.length, lbl: t("rd_chapters_read"),   trend: t("rd_keep_going"), up:true, onClick:null },
     { color:"violet", emoji:"🔖", val: bookmarks.length,      lbl: t("rd_bookmarks_saved"), trend: t("rd_saved_label"),up:true, onClick:null },
     { color:"amber",  emoji:"🪙", val: points ?? 0,           lbl: t("rd_coin_balance"),    trend: t("rd_top_up"),     up:true, onClick:() => navigate("/coins") },
