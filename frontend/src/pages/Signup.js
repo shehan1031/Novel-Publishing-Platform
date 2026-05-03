@@ -243,7 +243,6 @@ export default function Signup() {
               }
             </button>
 
-            {/* ── fixed: replaced <a href="#"> with buttons for accessibility ── */}
             <p className="af-terms">
               {t("auth_terms_prefix")}{" "}
               <button
