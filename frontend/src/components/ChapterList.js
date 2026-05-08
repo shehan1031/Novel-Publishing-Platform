@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AuthContext }   from "../context/AuthContext";
 import { PointsContext } from "../context/PointsContext";
@@ -25,7 +26,7 @@ const UnlockIcon = () => (
   </svg>
 );
 
-/* ════ Unlock Modal ════ */
+/* ════ Unlock Modal — rendered via Portal into document.body ════ */
 const UnlockModal = ({ chapter, balance, onConfirm, onClose, unlocking }) => {
   const navigate  = useNavigate();
   const cost      = chapter.coinCost > 0 ? chapter.coinCost : DEFAULT_COIN_COST;
@@ -33,109 +34,136 @@ const UnlockModal = ({ chapter, balance, onConfirm, onClose, unlocking }) => {
   const remaining = Math.max(0, (balance || 0) - cost);
   const shortage  = cost - (balance || 0);
 
-  return (
+  /* lock body scroll */
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  /* Escape to close */
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  const modal = (
     <div
       onClick={onClose}
       style={{
-        position:"fixed", inset:0,
-        background:"rgba(0,0,0,0.75)",
-        backdropFilter:"blur(6px)",
-        display:"flex",
-        alignItems:"center",
-        justifyContent:"center",
-        zIndex:10000,
-        padding:"20px",
+        position:        "fixed",
+        top:             0,
+        left:            0,
+        width:           "100%",
+        height:          "100%",
+        background:      "rgba(0,0,0,0.85)",
+        backdropFilter:  "blur(8px)",
+        display:         "flex",
+        alignItems:      "center",
+        justifyContent:  "center",
+        zIndex:          2147483647,   /* maximum possible z-index */
+        padding:         "20px",
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Unlock Premium Chapter"
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background:"#0d1120",
-          border:"1px solid rgba(255,255,255,0.1)",
-          borderRadius:20,
-          padding:"32px 28px",
-          width:"100%",
-          maxWidth:420,
-          boxShadow:"0 32px 80px rgba(0,0,0,0.7)",
-          position:"relative",
+          background:    "#0d1120",
+          border:        "1px solid rgba(255,255,255,0.12)",
+          borderRadius:  20,
+          padding:       "32px 28px",
+          width:         "100%",
+          maxWidth:      420,
+          boxShadow:     "0 32px 80px rgba(0,0,0,0.9)",
+          position:      "relative",
+          maxHeight:     "90vh",
+          overflowY:     "auto",
         }}
       >
-        {/* close ✕ */}
+        {/* close */}
         <button
           onClick={onClose}
+          aria-label="Close"
           style={{
-            position:"absolute", top:14, right:14,
-            background:"rgba(255,255,255,0.06)",
-            border:"none", borderRadius:8,
-            width:30, height:30,
-            display:"flex", alignItems:"center",
-            justifyContent:"center",
-            cursor:"pointer", color:"#64748b",
-            fontSize:15, lineHeight:1,
+            position:       "absolute",
+            top:            14,
+            right:          14,
+            background:     "rgba(255,255,255,0.06)",
+            border:         "none",
+            borderRadius:   8,
+            width:          30,
+            height:         30,
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            cursor:         "pointer",
+            color:          "#64748b",
+            fontSize:       15,
           }}
         >
           ✕
         </button>
 
         {/* header */}
-        <div style={{ textAlign:"center", marginBottom:24 }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{
-            width:64, height:64, borderRadius:"50%",
-            background:"rgba(245,158,11,0.12)",
-            border:"1px solid rgba(245,158,11,0.25)",
-            display:"flex", alignItems:"center",
-            justifyContent:"center",
-            margin:"0 auto 16px", fontSize:30,
+            width:          64,
+            height:         64,
+            borderRadius:   "50%",
+            background:     "rgba(245,158,11,0.12)",
+            border:         "1px solid rgba(245,158,11,0.25)",
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            margin:         "0 auto 16px",
+            fontSize:       30,
           }}>
             🔓
           </div>
-          <h3 style={{
-            color:"#e2e8f0", fontSize:18,
-            fontWeight:700, margin:"0 0 6px",
-          }}>
+          <h3 style={{ color: "#e2e8f0", fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>
             Unlock Premium Chapter
           </h3>
-          <p style={{ color:"#64748b", fontSize:13, margin:0 }}>
+          <p style={{ color: "#64748b", fontSize: 13, margin: 0 }}>
             {chapter.title}
           </p>
         </div>
 
         {/* cost breakdown */}
         <div style={{
-          background:"rgba(245,158,11,0.06)",
-          border:"1px solid rgba(245,158,11,0.15)",
-          borderRadius:12, padding:"16px 18px",
-          marginBottom:16,
-          display:"flex", flexDirection:"column", gap:12,
+          background:     "rgba(245,158,11,0.06)",
+          border:         "1px solid rgba(245,158,11,0.15)",
+          borderRadius:   12,
+          padding:        "16px 18px",
+          marginBottom:   16,
+          display:        "flex",
+          flexDirection:  "column",
+          gap:            12,
         }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <span style={{ color:"#94a3b8", fontSize:13 }}>Chapter cost</span>
-            <span style={{
-              color:"#f59e0b", fontWeight:700, fontSize:15,
-              display:"flex", alignItems:"center", gap:5,
-            }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "#94a3b8", fontSize: 13 }}>Chapter cost</span>
+            <span style={{ color: "#f59e0b", fontWeight: 700, fontSize: 15 }}>
               🪙 {cost} coins
             </span>
           </div>
-
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <span style={{ color:"#94a3b8", fontSize:13 }}>Your balance</span>
-            <span style={{
-              color: canAfford ? "#22c55e" : "#ef4444",
-              fontWeight:600, fontSize:13,
-              display:"flex", alignItems:"center", gap:5,
-            }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "#94a3b8", fontSize: 13 }}>Your balance</span>
+            <span style={{ color: canAfford ? "#22c55e" : "#ef4444", fontWeight: 600, fontSize: 13 }}>
               🪙 {(balance || 0).toLocaleString()}
             </span>
           </div>
-
           <div style={{
-            borderTop:"1px solid rgba(255,255,255,0.06)",
-            paddingTop:12, marginTop:2,
-            display:"flex", justifyContent:"space-between", alignItems:"center",
+            borderTop:      "1px solid rgba(255,255,255,0.06)",
+            paddingTop:     12,
+            display:        "flex",
+            justifyContent: "space-between",
+            alignItems:     "center",
           }}>
-            <span style={{ color:"#94a3b8", fontSize:13 }}>Balance after</span>
-            <span style={{ color:"#e2e8f0", fontWeight:600, fontSize:13 }}>
+            <span style={{ color: "#94a3b8", fontSize: 13 }}>Balance after</span>
+            <span style={{ color: "#e2e8f0", fontWeight: 600, fontSize: 13 }}>
               {remaining.toLocaleString()} coins
             </span>
           </div>
@@ -143,31 +171,43 @@ const UnlockModal = ({ chapter, balance, onConfirm, onClose, unlocking }) => {
 
         {/* perks */}
         <div style={{
-          display:"flex", gap:16, justifyContent:"center",
-          fontSize:11, color:"#475569",
-          marginBottom:16, flexWrap:"wrap",
+          display:        "flex",
+          gap:            16,
+          justifyContent: "center",
+          fontSize:       11,
+          color:          "#475569",
+          marginBottom:   16,
+          flexWrap:       "wrap",
         }}>
           <span>✓ Permanent access</span>
           <span>✓ Read any time</span>
           <span>✓ All themes</span>
         </div>
 
-        {/* not enough warning */}
+        {/* not enough */}
         {!canAfford && (
           <div style={{
-            background:"rgba(239,68,68,0.08)",
-            border:"1px solid rgba(239,68,68,0.2)",
-            borderRadius:10, padding:"10px 14px",
-            marginBottom:16, color:"#f87171",
-            fontSize:12, textAlign:"center", lineHeight:1.5,
+            background:   "rgba(239,68,68,0.08)",
+            border:       "1px solid rgba(239,68,68,0.2)",
+            borderRadius: 10,
+            padding:      "10px 14px",
+            marginBottom: 16,
+            color:        "#f87171",
+            fontSize:     12,
+            textAlign:    "center",
+            lineHeight:   1.5,
           }}>
             You need <strong>{shortage}</strong> more coins.{" "}
             <button
               onClick={() => navigate("/coins")}
               style={{
-                color:"#3b82f6", background:"none",
-                border:"none", cursor:"pointer",
-                fontWeight:600, fontSize:12, padding:0,
+                color:      "#3b82f6",
+                background: "none",
+                border:     "none",
+                cursor:     "pointer",
+                fontWeight: 600,
+                fontSize:   12,
+                padding:    0,
               }}
             >
               Buy coins →
@@ -175,16 +215,20 @@ const UnlockModal = ({ chapter, balance, onConfirm, onClose, unlocking }) => {
           </div>
         )}
 
-        {/* action buttons */}
-        <div style={{ display:"flex", gap:10 }}>
+        {/* actions */}
+        <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={onClose}
             style={{
-              flex:1, padding:"11px 0", borderRadius:10,
-              border:"1px solid rgba(255,255,255,0.1)",
-              background:"transparent",
-              color:"#64748b", fontSize:13,
-              fontWeight:600, cursor:"pointer",
+              flex:         1,
+              padding:      "11px 0",
+              borderRadius: 10,
+              border:       "1px solid rgba(255,255,255,0.1)",
+              background:   "transparent",
+              color:        "#64748b",
+              fontSize:     13,
+              fontWeight:   600,
+              cursor:       "pointer",
             }}
           >
             Cancel
@@ -193,28 +237,34 @@ const UnlockModal = ({ chapter, balance, onConfirm, onClose, unlocking }) => {
             onClick={onConfirm}
             disabled={!canAfford || unlocking}
             style={{
-              flex:2, padding:"11px 0", borderRadius:10,
-              border:"none",
-              background: canAfford
+              flex:           2,
+              padding:        "11px 0",
+              borderRadius:   10,
+              border:         "none",
+              background:     canAfford
                 ? "linear-gradient(135deg,#f59e0b,#d97706)"
                 : "rgba(100,116,139,0.2)",
-              color: canAfford ? "#000" : "#475569",
-              fontSize:13, fontWeight:700,
-              cursor: canAfford && !unlocking ? "pointer" : "not-allowed",
-              display:"flex", alignItems:"center",
-              justifyContent:"center", gap:6,
-              opacity: unlocking ? 0.8 : 1,
+              color:          canAfford ? "#000" : "#475569",
+              fontSize:       13,
+              fontWeight:     700,
+              cursor:         canAfford && !unlocking ? "pointer" : "not-allowed",
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+              gap:            6,
+              opacity:        unlocking ? 0.8 : 1,
             }}
           >
             {unlocking ? (
               <>
                 <span style={{
-                  width:12, height:12,
-                  border:"2px solid rgba(0,0,0,0.2)",
+                  width:         12,
+                  height:        12,
+                  border:        "2px solid rgba(0,0,0,0.2)",
                   borderTopColor:"#000",
-                  borderRadius:"50%",
-                  display:"inline-block",
-                  animation:"cl-spin .7s linear infinite",
+                  borderRadius:  "50%",
+                  display:       "inline-block",
+                  animation:     "cl-spin .7s linear infinite",
                 }}/>
                 Unlocking…
               </>
@@ -226,10 +276,13 @@ const UnlockModal = ({ chapter, balance, onConfirm, onClose, unlocking }) => {
           </button>
         </div>
 
-        <style>{`@keyframes cl-spin { to { transform:rotate(360deg); } }`}</style>
+        <style>{`@keyframes cl-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   );
+
+  /* ← key fix: render into document.body, escaping any CSS stacking context */
+  return createPortal(modal, document.body);
 };
 
 /* ════ Main ChapterList ════ */
@@ -242,9 +295,7 @@ export default function ChapterList({ chapters = [], novelId }) {
   const [modalChapter, setModalChapter] = useState(null);
   const [unlocking,    setUnlocking]    = useState(false);
   const [toast,        setToast]        = useState(null);
-
-  /* ── loadingIds removed — was assigned but never read ── */
-  const [, setLoadingIds] = useState(true);
+  const [, setLoadingIds]               = useState(true);
 
   const loadUnlocked = useCallback(async () => {
     if (!token) { setLoadingIds(false); return; }
@@ -287,17 +338,13 @@ export default function ChapterList({ chapters = [], novelId }) {
     setUnlocking(true);
     try {
       await API.post(`/chapters/${modalChapter._id}/unlock`);
-
       setUnlockedIds(prev => new Set([...prev, modalChapter._id]));
       fetchPoints?.();
-
       const cost = modalChapter.coinCost > 0
         ? modalChapter.coinCost
         : DEFAULT_COIN_COST;
-
       showToast(`✓ "${modalChapter.title}" unlocked! Spent ${cost} coins`);
       setModalChapter(null);
-
       navigate(`/novel/${novelId}/chapter/${modalChapter._id}`);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Unlock failed";
@@ -310,25 +357,31 @@ export default function ChapterList({ chapters = [], novelId }) {
 
   return (
     <>
-      {/* ── toast ── */}
+      {/* toast */}
       {toast && (
         <div style={{
-          position:"fixed", bottom:28, left:"50%",
-          transform:"translateX(-50%)",
-          background: toast.type === "error" ? "#ef4444" : "#22c55e",
-          color:"#fff", padding:"12px 22px",
-          borderRadius:12, fontSize:13,
-          fontWeight:600, zIndex:9999,
-          boxShadow:"0 6px 24px rgba(0,0,0,0.35)",
-          maxWidth:"90vw", textAlign:"center",
-          whiteSpace:"nowrap",
+          position:     "fixed",
+          bottom:       28,
+          left:         "50%",
+          transform:    "translateX(-50%)",
+          background:   toast.type === "error" ? "#ef4444" : "#22c55e",
+          color:        "#fff",
+          padding:      "12px 22px",
+          borderRadius: 12,
+          fontSize:     13,
+          fontWeight:   600,
+          zIndex:       2147483647,
+          boxShadow:    "0 6px 24px rgba(0,0,0,0.35)",
+          maxWidth:     "90vw",
+          textAlign:    "center",
+          whiteSpace:   "nowrap",
           pointerEvents:"none",
         }} role="status" aria-live="polite">
           {toast.msg}
         </div>
       )}
 
-      {/* ── modal ── */}
+      {/* modal via portal */}
       {modalChapter && (
         <UnlockModal
           chapter={modalChapter}
@@ -339,12 +392,14 @@ export default function ChapterList({ chapters = [], novelId }) {
         />
       )}
 
-      {/* ── chapter list ── */}
-      <ul style={{ listStyle:"none", padding:0, margin:0 }}>
+      {/* chapter list */}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {chapters.length === 0 && (
           <li style={{
-            textAlign:"center", color:"#475569",
-            padding:"40px 20px", fontSize:14,
+            textAlign: "center",
+            color:     "#475569",
+            padding:   "40px 20px",
+            fontSize:  14,
           }}>
             No chapters yet.
           </li>
@@ -362,112 +417,132 @@ export default function ChapterList({ chapters = [], novelId }) {
               onClick={() => handleClick(ch)}
               role="button"
               tabIndex={0}
-              onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") handleClick(ch);
-              }}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") handleClick(ch); }}
               aria-label={
                 free       ? `${ch.title} — Free` :
                 accessible ? `${ch.title} — Unlocked` :
                              `${ch.title} — ${cost} coins to unlock`
               }
               style={{
-                display:"flex", alignItems:"center",
-                gap:12, padding:"13px 16px",
-                borderRadius:12,
-                border:`1px solid ${
-                  accessible && !free ? "rgba(34,197,94,0.2)" :
+                display:      "flex",
+                alignItems:   "center",
+                gap:          12,
+                padding:      "13px 16px",
+                borderRadius: 12,
+                border: `1px solid ${
+                  accessible && !free ? "rgba(34,197,94,0.2)"   :
                   locked              ? "rgba(245,158,11,0.15)" :
                                         "rgba(255,255,255,0.06)"
                 }`,
                 background:
-                  accessible && !free ? "rgba(34,197,94,0.04)" :
+                  accessible && !free ? "rgba(34,197,94,0.04)"  :
                   locked              ? "rgba(245,158,11,0.03)" :
                                         "rgba(255,255,255,0.02)",
-                marginBottom:8,
-                cursor:"pointer",
-                transition:"all 0.15s",
+                marginBottom: 8,
+                cursor:       "pointer",
+                transition:   "all 0.15s",
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.background =
-                  accessible && !free ? "rgba(34,197,94,0.09)" :
+                  accessible && !free ? "rgba(34,197,94,0.09)"  :
                   locked              ? "rgba(245,158,11,0.08)" :
                                         "rgba(255,255,255,0.05)";
                 e.currentTarget.style.borderColor =
-                  accessible && !free ? "rgba(34,197,94,0.4)" :
+                  accessible && !free ? "rgba(34,197,94,0.4)"   :
                   locked              ? "rgba(245,158,11,0.35)" :
                                         "rgba(59,130,246,0.3)";
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background =
-                  accessible && !free ? "rgba(34,197,94,0.04)" :
+                  accessible && !free ? "rgba(34,197,94,0.04)"  :
                   locked              ? "rgba(245,158,11,0.03)" :
                                         "rgba(255,255,255,0.02)";
                 e.currentTarget.style.borderColor =
-                  accessible && !free ? "rgba(34,197,94,0.2)" :
+                  accessible && !free ? "rgba(34,197,94,0.2)"   :
                   locked              ? "rgba(245,158,11,0.15)" :
                                         "rgba(255,255,255,0.06)";
               }}
             >
               {/* number bubble */}
               <span style={{
-                width:30, height:30, borderRadius:"50%",
-                display:"flex", alignItems:"center",
-                justifyContent:"center", flexShrink:0,
+                width:          30,
+                height:         30,
+                borderRadius:   "50%",
+                display:        "flex",
+                alignItems:     "center",
+                justifyContent: "center",
+                flexShrink:     0,
                 background:
                   locked              ? "rgba(245,158,11,0.12)" :
-                  accessible && !free ? "rgba(34,197,94,0.12)" :
+                  accessible && !free ? "rgba(34,197,94,0.12)"  :
                                         "rgba(255,255,255,0.06)",
                 color:
                   locked              ? "#f59e0b" :
                   accessible && !free ? "#22c55e" :
                                         "#64748b",
-                fontSize:11, fontWeight:700,
+                fontSize:   11,
+                fontWeight: 700,
               }}>
                 {locked ? <LockIcon/> : String(i + 1).padStart(2, "0")}
               </span>
 
               {/* title */}
               <span style={{
-                flex:1, minWidth:0,
-                color: locked ? "#94a3b8" : "#e2e8f0",
-                fontSize:14, fontWeight:500,
-                overflow:"hidden",
-                textOverflow:"ellipsis",
-                whiteSpace:"nowrap",
+                flex:          1,
+                minWidth:      0,
+                color:         locked ? "#94a3b8" : "#e2e8f0",
+                fontSize:      14,
+                fontWeight:    500,
+                overflow:      "hidden",
+                textOverflow:  "ellipsis",
+                whiteSpace:    "nowrap",
               }}>
                 {ch.title}
               </span>
 
-              {/* right badge */}
+              {/* badge */}
               {free ? (
                 <span style={{
-                  fontSize:9, fontWeight:700,
-                  padding:"2px 8px", borderRadius:4,
-                  background:"rgba(34,197,94,0.12)",
-                  color:"#22c55e",
-                  letterSpacing:".05em", flexShrink:0,
+                  fontSize:      9,
+                  fontWeight:    700,
+                  padding:       "2px 8px",
+                  borderRadius:  4,
+                  background:    "rgba(34,197,94,0.12)",
+                  color:         "#22c55e",
+                  letterSpacing: ".05em",
+                  flexShrink:    0,
                 }}>
                   FREE
                 </span>
               ) : accessible ? (
                 <span style={{
-                  fontSize:9, fontWeight:700,
-                  padding:"2px 8px", borderRadius:4,
-                  background:"rgba(34,197,94,0.12)",
-                  color:"#22c55e",
-                  letterSpacing:".05em", flexShrink:0,
-                  display:"flex", alignItems:"center", gap:4,
+                  fontSize:       9,
+                  fontWeight:     700,
+                  padding:        "2px 8px",
+                  borderRadius:   4,
+                  background:     "rgba(34,197,94,0.12)",
+                  color:          "#22c55e",
+                  letterSpacing:  ".05em",
+                  flexShrink:     0,
+                  display:        "flex",
+                  alignItems:     "center",
+                  gap:            4,
                 }}>
                   <UnlockIcon/> UNLOCKED
                 </span>
               ) : (
                 <span style={{
-                  fontSize:9, fontWeight:700,
-                  padding:"2px 8px", borderRadius:4,
-                  background:"rgba(245,158,11,0.12)",
-                  color:"#f59e0b",
-                  letterSpacing:".05em", flexShrink:0,
-                  display:"flex", alignItems:"center", gap:4,
+                  fontSize:       9,
+                  fontWeight:     700,
+                  padding:        "2px 8px",
+                  borderRadius:   4,
+                  background:     "rgba(245,158,11,0.12)",
+                  color:          "#f59e0b",
+                  letterSpacing:  ".05em",
+                  flexShrink:     0,
+                  display:        "flex",
+                  alignItems:     "center",
+                  gap:            4,
                 }}>
                   <LockIcon/> {cost} coins
                 </span>
