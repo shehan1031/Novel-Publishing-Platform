@@ -3,10 +3,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthContext }     from "./context/AuthContext";
 import { LanguageContext } from "./context/LanguageContext";
 
-import Navbar       from "./components/Navbar";
-import Footer       from "./components/Footer";
-import SkipLink     from "./components/SkipLink";
-import useAnnouncer from "./hooks/useAnnouncer";
+import Navbar         from "./components/Navbar";
+import Footer         from "./components/Footer";
+import SkipLink       from "./components/SkipLink";
+import useAnnouncer   from "./hooks/useAnnouncer";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Home            from "./pages/Home";
@@ -22,6 +22,10 @@ import NovelEditor     from "./pages/NovelEditor";
 import ChapterEditor   from "./pages/ChapterEditor";
 import AuthorAnalytics from "./pages/AuthorAnalytics";
 import CoinShop        from "./pages/CoinShop";
+import About           from "./pages/About";
+import Terms           from "./pages/Terms";
+import Privacy         from "./pages/Privacy";
+import Contact         from "./pages/Contact";
 
 import "./styles/accessibility.css";
 
@@ -51,6 +55,12 @@ function App() {
             element={!user ? <Login />  : <Navigate to="/" replace />} />
           <Route path="/signup"
             element={!user ? <Signup /> : <Navigate to="/" replace />} />
+
+          {/* ── static pages ── */}
+          <Route path="/about"   element={<About />}   />
+          <Route path="/terms"   element={<Terms />}   />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contact" element={<Contact />} />
 
           {/* ── reader ── */}
           <Route path="/reader/dashboard"

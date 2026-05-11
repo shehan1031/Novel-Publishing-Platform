@@ -145,7 +145,6 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
     if (coins > balance)           { setError(`You only have ${fmtNum(balance)} coins.`); return; }
     if (!accountNumber.trim())     { setError("Account number is required."); return; }
     if (!accountName.trim())       { setError("Account holder name is required."); return; }
-
     setSubmitting(true);
     try {
       const res = await API.post("/points/withdraw", {
@@ -163,17 +162,14 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
   return (
     <div className="av6-overlay" onClick={onClose}
       role="dialog" aria-modal="true" aria-label="Request Withdrawal">
-      <div className="av6-modal" onClick={e => e.stopPropagation()}
-        style={{ maxWidth:480 }}>
+      <div className="av6-modal" onClick={e => e.stopPropagation()} style={{ maxWidth:480 }}>
         <div className="av6-modal-head">
           <span>Request Withdrawal</span>
           <button className="av6-icon-btn" onClick={onClose} aria-label="Close">{I.x}</button>
         </div>
-
         <form onSubmit={handleSubmit}
           style={{ padding:"20px 22px 24px", display:"flex", flexDirection:"column", gap:16 }}>
 
-          {/* balance info */}
           <div style={{
             background:"rgba(245,158,11,.08)", border:"1px solid rgba(245,158,11,.2)",
             borderRadius:8, padding:"14px 16px",
@@ -188,7 +184,6 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* split explainer */}
           <div style={{
             background:"rgba(34,197,94,.06)", border:"1px solid rgba(34,197,94,.15)",
             borderRadius:8, padding:"10px 14px", fontSize:11, color:"#94a3b8",
@@ -204,15 +199,13 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
             )}
           </div>
 
-          {/* amount */}
           <div className="av6-field">
             <label className="av6-label" htmlFor="wd-amount">
               Coins to withdraw <span style={{ color:"#64748b", fontWeight:400 }}>(min 100)</span>
             </label>
             <input id="wd-amount" className="av6-input" type="number"
               min={100} max={balance} placeholder="e.g. 500"
-              value={amount} onChange={e => setAmount(e.target.value)}
-              aria-required="true"/>
+              value={amount} onChange={e => setAmount(e.target.value)} aria-required="true"/>
             {coins >= 100 && (
               <div style={{ fontSize:11, color:"#22c55e", marginTop:4 }}>
                 ✓ You will receive {fmtLKR(authorLKR)}
@@ -220,7 +213,6 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
             )}
           </div>
 
-          {/* method */}
           <div className="av6-field">
             <label className="av6-label" htmlFor="wd-method">Payment method</label>
             <select id="wd-method" className="av6-input"
@@ -231,7 +223,6 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
             </select>
           </div>
 
-          {/* bank name — only for bank */}
           {method === "bank" && (
             <div className="av6-field">
               <label className="av6-label" htmlFor="wd-bank">Bank name</label>
@@ -241,7 +232,6 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* account number */}
           <div className="av6-field">
             <label className="av6-label" htmlFor="wd-accnum">
               {method === "bank" ? "Account number" : "Mobile number"}
@@ -252,7 +242,6 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
               aria-required="true"/>
           </div>
 
-          {/* account name */}
           <div className="av6-field">
             <label className="av6-label" htmlFor="wd-accname">Account holder name</label>
             <input id="wd-accname" className="av6-input"
@@ -261,7 +250,6 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
               aria-required="true"/>
           </div>
 
-          {/* note */}
           <div className="av6-field">
             <label className="av6-label" htmlFor="wd-note">Note (optional)</label>
             <textarea id="wd-note" className="av6-input av6-textarea" rows={2}
@@ -277,7 +265,7 @@ const WithdrawalModal = ({ balance, onClose, onSuccess }) => {
             <button type="button" className="av6-btn-ghost" onClick={onClose}>Cancel</button>
             <button type="submit" className="av6-btn-primary"
               disabled={submitting} aria-busy={submitting}>
-              {submitting ? "Submitting…" : `${I.send} Submit Request`}
+              {submitting ? "Submitting…" : <>{I.send} Submit Request</>}
             </button>
           </div>
         </form>
@@ -530,6 +518,10 @@ export default function AuthorDashboard() {
   const [withdrawals,   setWithdrawals]   = useState([]);
   const [wdLoading,     setWdLoading]     = useState(false);
 
+  /* ── real earnings state ── */
+  const [earnings,        setEarnings]        = useState(null);
+  const [earningsLoading, setEarningsLoading] = useState(false);
+
   /* create form */
   const [nTitle,   setNTitle]   = useState("");
   const [nDesc,    setNDesc]    = useState("");
@@ -551,6 +543,7 @@ export default function AuthorDashboard() {
 
   useEffect(() => {
     if (section === "withdraw") { loadBalance(); loadWithdrawals(); }
+    if (section === "earnings") { loadEarnings(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
 
@@ -568,6 +561,24 @@ export default function AuthorDashboard() {
       setWithdrawals(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.warn("loadWithdrawals:", e.message); }
     finally { setWdLoading(false); }
+  }, []);
+
+  /* ── fetch real earnings from backend ── */
+  const loadEarnings = useCallback(async () => {
+    setEarningsLoading(true);
+    try {
+      const res = await API.get("/author/earnings");
+      setEarnings(res.data);
+    } catch (e) {
+      console.warn("loadEarnings:", e.message);
+      /* fallback — use points balance */
+      try {
+        const res = await API.get("/points/author/earnings");
+        setEarnings(res.data);
+      } catch (e2) { console.warn("loadEarnings fallback:", e2.message); }
+    } finally {
+      setEarningsLoading(false);
+    }
   }, []);
 
   const toast$ = (msg, type = "success") => {
@@ -610,7 +621,6 @@ export default function AuthorDashboard() {
     n.title?.toLowerCase().includes(search.toLowerCase())
   );
 
-  /* pending withdrawal count for badge */
   const pendingWd = withdrawals.filter(w => w.status === "pending").length;
 
   const NAV = [
@@ -754,7 +764,11 @@ export default function AuthorDashboard() {
               </button>
             )}
             <button className="av6-tbtn"
-              onClick={() => { fetchAuthorNovels(); if(section==="withdraw"){loadBalance();loadWithdrawals();} }}
+              onClick={() => {
+                fetchAuthorNovels();
+                if (section === "withdraw") { loadBalance(); loadWithdrawals(); }
+                if (section === "earnings") { loadEarnings(); }
+              }}
               aria-label="Refresh">
               {I.refresh}
             </button>
@@ -1090,58 +1104,156 @@ export default function AuthorDashboard() {
             </>
           )}
 
-          {/* ════ EARNINGS ════ */}
+          {/* ════ EARNINGS — REAL DATA ════ */}
           {section === "earnings" && (
             <>
-              <div className="av6-kpi-grid" style={{ gridTemplateColumns:"repeat(3,1fr)" }}>
-                {[
-                  { label:t("ad_chapters"),  val:totalChapters,      color:"#3b82f6" },
-                  { label:t("ad_views"),     val:fmtNum(totalViews), color:"#8b5cf6" },
-                  { label:t("ad_published"), val:published,          color:"#22c55e" },
-                ].map((k, i) => (
-                  <div key={i} className="av6-kpi" style={{ "--ka":k.color }}>
-                    <div className="av6-kpi-val">{k.val}</div>
-                    <div className="av6-kpi-label">{k.label}</div>
+              {earningsLoading ? (
+                <div style={{ display:"flex", justifyContent:"center", padding:60 }}>
+                  <div className="av6-spinner" aria-hidden="true"/>
+                </div>
+              ) : (
+                <>
+                  {/* KPI cards with real data */}
+                  <div className="av6-kpi-grid" style={{ gridTemplateColumns:"repeat(4,1fr)" }}>
+                    {[
+                      {
+                        label:   "Current Balance",
+                        val:     fmtNum(earnings?.balance ?? authorBalance),
+                        sub:     "coins available",
+                        color:   "#f59e0b",
+                        emoji:   "🪙",
+                      },
+                      {
+                        label:   "You Receive (60%)",
+                        val:     fmtLKR(earnings?.balanceLKR ?? ((authorBalance * AUTHOR_SHARE) / COINS_PER_LKR)),
+                        sub:     "withdrawable LKR",
+                        color:   "#22c55e",
+                        emoji:   "💵",
+                      },
+                      {
+                        label:   "Total Earned",
+                        val:     fmtNum(earnings?.totalEarned ?? 0),
+                        sub:     "coins from unlocks",
+                        color:   "#3b82f6",
+                        emoji:   "📈",
+                      },
+                      {
+                        label:   "Author Share",
+                        val:     `${earnings?.authorShare ?? 60}%`,
+                        sub:     `Platform ${earnings?.platformShare ?? 40}%`,
+                        color:   "#8b5cf6",
+                        emoji:   "✂️",
+                      },
+                    ].map((k, i) => (
+                      <div key={i} className="av6-kpi"
+                        style={{ "--ka":k.color, animationDelay:i*.07+"s" }}>
+                        <div className="av6-kpi-emoji" aria-hidden="true">{k.emoji}</div>
+                        <div className="av6-kpi-val">{k.val}</div>
+                        <div className="av6-kpi-label">{k.label}</div>
+                        <div style={{ fontSize:10, color:"#475569", marginTop:2 }}>{k.sub}</div>
+                        <div className="av6-kpi-bar">
+                          <div className="av6-kpi-bar-fill" style={{ background:k.color }}/>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="av6-card">
-                <div className="av6-card-head">
-                  <span className="av6-card-title">{t("ad_earnings")}</span>
-                </div>
-                <div className="av6-table-wrap">
-                  <table className="av6-table">
-                    <thead><tr>
-                      <th>Novel</th><th>{t("ad_chapters")}</th>
-                      <th>Est. {t("coins")}</th><th>Est. LKR</th>
-                    </tr></thead>
-                    <tbody>
-                      {novels.map((n) => {
-                        const coins = (n.chapters?.length||0) * 12;
-                        return (
-                          <tr key={n._id}>
-                            <td><span className="av6-cell-name">{n.title}</span></td>
-                            <td className="av6-cell-sub">{n.chapters?.length||0}</td>
-                            <td style={{ fontWeight:600, color:"#f59e0b", fontSize:12 }}>
-                              {fmtNum(coins)} {t("coins")}
-                            </td>
-                            <td style={{ fontWeight:600, color:"#22c55e", fontSize:12 }}>
-                              {fmtLKR(coins * AUTHOR_SHARE / COINS_PER_LKR)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+
+                  {/* split policy info */}
+                  <div style={{
+                    background:"rgba(34,197,94,.06)", border:"1px solid rgba(34,197,94,.15)",
+                    borderRadius:10, padding:"12px 18px", fontSize:12, color:"#94a3b8",
+                  }}>
+                    💡 <strong style={{ color:"#e2e8f0" }}>How earnings work:</strong>{" "}
+                    When a reader unlocks your premium chapter, you receive{" "}
+                    <strong style={{ color:"#22c55e" }}>60%</strong> of the coin value.
+                    10 coins = LKR 1.00 total →{" "}
+                    <strong style={{ color:"#22c55e" }}>LKR 0.60 goes to you</strong>.
+                    Withdraw anytime with minimum 100 coins.
+                  </div>
+
+                  {/* real transaction history */}
+                  <div className="av6-card">
+                    <div className="av6-card-head">
+                      <span className="av6-card-title">
+                        Earning history
+                        <span className="av6-count-chip" style={{ marginLeft:8 }}>
+                          {(earnings?.history || []).length}
+                        </span>
+                      </span>
+                      <button className="av6-tbtn" onClick={loadEarnings} aria-label="Refresh">
+                        {I.refresh}
+                      </button>
+                    </div>
+
+                    {(earnings?.history || []).length === 0 ? (
+                      <div className="av6-empty">
+                        <div style={{ fontSize:36 }} aria-hidden="true">📭</div>
+                        <h3>No earnings yet</h3>
+                        <p>Earnings appear here when readers unlock your premium chapters.</p>
+                        <button className="av6-btn-primary" onClick={() => setSection("novels")}>
+                          Manage your novels →
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="av6-table-wrap">
+                        <table className="av6-table">
+                          <thead><tr>
+                            <th>Date</th>
+                            <th>Chapter</th>
+                            <th>Type</th>
+                            <th>Coins earned</th>
+                            <th>LKR value</th>
+                            <th>Balance after</th>
+                          </tr></thead>
+                          <tbody>
+                            {(earnings?.history || []).map((txn) => (
+                              <tr key={txn._id}>
+                                <td className="av6-cell-sub">
+                                  {new Date(txn.createdAt).toLocaleDateString("en-LK",{
+                                    day:"numeric", month:"short", year:"numeric",
+                                  })}
+                                </td>
+                                <td>
+                                  <div className="av6-cell-name">
+                                    {txn.chapter?.title || "Chapter unlock"}
+                                  </div>
+                                </td>
+                                <td>
+                                  <span style={{
+                                    fontSize:9, fontWeight:700,
+                                    padding:"2px 8px", borderRadius:4,
+                                    background: txn.type === "credit"
+                                      ? "rgba(34,197,94,.12)" : "rgba(59,130,246,.12)",
+                                    color: txn.type === "credit" ? "#22c55e" : "#60a5fa",
+                                    textTransform:"uppercase", letterSpacing:".06em",
+                                  }}>
+                                    {txn.type}
+                                  </span>
+                                </td>
+                                <td style={{ fontWeight:700, color:"#f59e0b", fontSize:12 }}>
+                                  +{fmtNum(txn.amount)} coins
+                                </td>
+                                <td style={{ fontWeight:600, color:"#22c55e", fontSize:12 }}>
+                                  {fmtLKR((txn.amount * AUTHOR_SHARE) / COINS_PER_LKR)}
+                                </td>
+                                <td className="av6-cell-sub">
+                                  {fmtNum(txn.balanceAfter)} coins
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
 
           {/* ════ WITHDRAWALS ════ */}
           {section === "withdraw" && (
             <>
-              {/* balance KPI cards */}
               <div className="av6-kpi-grid" style={{ gridTemplateColumns:"repeat(3,1fr)" }}>
                 <div className="av6-kpi" style={{ "--ka":"#f59e0b" }}>
                   <div className="av6-kpi-emoji" aria-hidden="true">🪙</div>
@@ -1172,7 +1284,6 @@ export default function AuthorDashboard() {
                 </div>
               </div>
 
-              {/* split policy info */}
               <div style={{
                 background:"rgba(245,158,11,.06)",
                 border:"1px solid rgba(245,158,11,.15)",
@@ -1186,7 +1297,6 @@ export default function AuthorDashboard() {
                 Minimum withdrawal: 100 coins.
               </div>
 
-              {/* history table */}
               <div className="av6-card">
                 <div className="av6-card-head">
                   <span className="av6-card-title">
