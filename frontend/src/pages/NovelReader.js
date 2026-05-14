@@ -13,7 +13,7 @@ import {
 } from "../services/translationService";
 import API from "../services/api";
 import "../styles/novelReader.css";
-
+ 
 const timeAgo = (date) => {
   const s = Math.floor((Date.now() - new Date(date)) / 1000);
   if (s < 60)    return "just now";
@@ -21,10 +21,10 @@ const timeAgo = (date) => {
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
 };
-
+ 
 const initials = (n = "") =>
   n.split(" ").filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join("") || "?";
-
+ 
 const THEMES = [
   { key:"dark",     label:"Dark",     bg:"#080c14", surface:"#0d1120", tx:"#e2e8f0", sub:"#94a3b8", muted:"#475569", border:"rgba(255,255,255,0.08)", barBg:"rgba(30,35,55,0.96)"    },
   { key:"light",    label:"Light",    bg:"#ffffff", surface:"#f5f5f5", tx:"#111827", sub:"#555",    muted:"#999",    border:"rgba(0,0,0,0.1)",        barBg:"rgba(255,255,255,0.96)" },
@@ -34,13 +34,13 @@ const THEMES = [
   { key:"rose",     label:"Rose",     bg:"#1a0d10", surface:"#261318", tx:"#f0d4d8", sub:"#c08090", muted:"#6b4050", border:"rgba(255,255,255,0.08)", barBg:"rgba(28,14,18,0.97)"   },
   { key:"paper",    label:"Paper",    bg:"#f2f0eb", surface:"#e8e5de", tx:"#2c2c2c", sub:"#666",    muted:"#aaa",    border:"rgba(0,0,0,0.1)",        barBg:"rgba(240,238,232,0.97)" },
 ];
-
+ 
 const TRANSLATE_LANGS = [
   { code:"en", label:"English", flag:"🇬🇧" },
   { code:"si", label:"සිංහල",  flag:"🇱🇰" },
   { code:"ta", label:"தமிழ்",  flag:"🇮🇳" },
 ];
-
+ 
 /* ════ Translation Bar ════ */
 const TranslationBar = ({
   currentLang, onTranslate, translating,
@@ -88,7 +88,7 @@ const TranslationBar = ({
     )}
   </div>
 );
-
+ 
 /* ════ Skeleton while translating ════ */
 const TranslatingSkeleton = () => (
   <div className="nr-translate-skeleton" aria-hidden="true">
@@ -98,7 +98,7 @@ const TranslatingSkeleton = () => (
     ))}
   </div>
 );
-
+ 
 /* ════ Locked Chapter Gate ════ */
 const LockedGate = ({
   chapter, points, user, unlocking, unlockError,
@@ -106,7 +106,7 @@ const LockedGate = ({
 }) => {
   const canAfford = (points || 0) >= (chapter.coinCost || 0);
   const shortage  = (chapter.coinCost || 0) - (points || 0);
-
+ 
   return (
     <div style={{
       textAlign:"center",
@@ -126,7 +126,7 @@ const LockedGate = ({
       }}>
         🔒
       </div>
-
+ 
       <h3 style={{ color:"#e2e8f0", fontSize:22, fontWeight:700, marginBottom:10 }}>
         Premium Chapter
       </h3>
@@ -140,7 +140,7 @@ const LockedGate = ({
           {(points || 0).toLocaleString()} coins
         </strong>
       </p>
-
+ 
       <div style={{
         display:"inline-flex", flexDirection:"column", gap:8,
         background:"rgba(255,255,255,0.03)",
@@ -172,7 +172,7 @@ const LockedGate = ({
           </div>
         )}
       </div>
-
+ 
       {user && !canAfford && (
         <div style={{
           background:"rgba(239,68,68,0.08)",
@@ -184,7 +184,7 @@ const LockedGate = ({
           You need <strong>{shortage}</strong> more coins
         </div>
       )}
-
+ 
       {unlockError && (
         <div style={{
           background:"rgba(239,68,68,0.08)",
@@ -196,7 +196,7 @@ const LockedGate = ({
           {unlockError}
         </div>
       )}
-
+ 
       <div style={{
         display:"flex", gap:16, justifyContent:"center",
         fontSize:11, color:"#475569", marginBottom:28, flexWrap:"wrap",
@@ -206,7 +206,7 @@ const LockedGate = ({
         <span>✓ All languages</span>
         <span>✓ Supports the author</span>
       </div>
-
+ 
       {user ? (
         <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
           {canAfford ? (
@@ -282,14 +282,14 @@ const LockedGate = ({
           </button>
         </div>
       )}
-
+ 
       <style>{`
         @keyframes nr-unlock-spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
 };
-
+ 
 /* ════════════════════════════════════════
    MAIN COMPONENT
 ════════════════════════════════════════ */
@@ -304,7 +304,7 @@ export default function NovelReader() {
     readingHistory,
     saveProgress,
   } = useContext(ProgressContext);
-
+ 
   const [novel,          setNovel]          = useState(null);
   const [comments,       setComments]       = useState([]);
   const [newComment,     setNewComment]     = useState("");
@@ -322,7 +322,7 @@ export default function NovelReader() {
   const [scrollPct,      setScrollPct]      = useState(0);
   const [mounted,        setMounted]        = useState(false);
   const [shareToast,     setShareToast]     = useState(false);
-
+ 
   const [displayLang,       setDisplayLang]       = useState("en");
   const [translatedTitle,   setTranslatedTitle]   = useState(null);
   const [translatedContent, setTranslatedContent] = useState(null);
@@ -330,17 +330,17 @@ export default function NovelReader() {
   const [translationError,  setTranslationError]  = useState("");
   const [isCached,          setIsCached]          = useState(false);
   const [progressMsg,       setProgressMsg]       = useState("");
-
+ 
   const [isUnlocked,     setIsUnlocked]     = useState(true);
   const [checkingUnlock, setCheckingUnlock] = useState(false);
   const [unlocking,      setUnlocking]      = useState(false);
   const [unlockError,    setUnlockError]    = useState("");
-
+ 
   const progressTimerRef = useRef(null);
   const settingsRef      = useRef(null);
-
+ 
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
-
+ 
   useEffect(() => {
     setDisplayLang("en");
     setTranslatedTitle(null);
@@ -353,7 +353,7 @@ export default function NovelReader() {
     setUnlockError("");
     setCheckingUnlock(false);
   }, [chapterId]);
-
+ 
   useEffect(() => {
     const h = (e) => {
       if (settingsRef.current && !settingsRef.current.contains(e.target))
@@ -362,14 +362,14 @@ export default function NovelReader() {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
-
+ 
   useEffect(() => {
     if (!showNav) return;
     const h = (e) => { if (e.key === "Escape") setShowNav(false); };
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, [showNav]);
-
+ 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -385,7 +385,7 @@ export default function NovelReader() {
     };
     load();
   }, [novelId]);
-
+ 
   useEffect(() => {
     if (!novel || !chapterId) return;
     const chapter = (novel.chapters || []).find(c => c._id === chapterId);
@@ -406,14 +406,14 @@ export default function NovelReader() {
       .catch(() => setIsUnlocked(false))
       .finally(() => setCheckingUnlock(false));
   }, [chapterId, novel, token]);
-
+ 
   useEffect(() => {
     if (!token || !novelId) return;
     API.get(`/bookmarks/${novelId}/check`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => setBookmarked(r.data.bookmarked || false)).catch(() => {});
   }, [token, novelId]);
-
+ 
   const loadComments = useCallback(async () => {
     if (!chapterId) return;
     try {
@@ -422,15 +422,14 @@ export default function NovelReader() {
       setLikeCount(data.length || 0);
     } catch (err) { console.error(err.message); }
   }, [chapterId]);
-
+ 
   useEffect(() => { loadComments(); }, [loadComments]);
-
-  /* fix 1 — fetchReadingHistory missing dep */
+ 
   useEffect(() => {
     if (token) fetchReadingHistory();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
-
+ 
   useEffect(() => {
     if (!readingHistory?.length || !chapterId) return;
     const record = readingHistory.find(r =>
@@ -444,7 +443,7 @@ export default function NovelReader() {
       }, 300);
     }
   }, [readingHistory, chapterId]);
-
+ 
   useEffect(() => {
     if (!chapterId || !isUnlocked) return;
     const handleScroll = () => {
@@ -469,7 +468,7 @@ export default function NovelReader() {
       clearTimeout(progressTimerRef.current);
     };
   }, [chapterId, user, saveProgress, isUnlocked]);
-
+ 
   const handleTranslate = useCallback(async (lang) => {
     if (lang === displayLang && lang !== "en") {
       setDisplayLang("en");
@@ -505,9 +504,7 @@ export default function NovelReader() {
       setProgressMsg("");
     }
   }, [chapterId, displayLang]);
-
-  /* fix 2 — chapter excluded from deps intentionally
-     (chapter is derived from novel+chapterId which are already deps via the unlock effect) */
+ 
   const handleUnlock = useCallback(async () => {
     setUnlockError("");
     setUnlocking(true);
@@ -524,7 +521,7 @@ export default function NovelReader() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, fetchPoints]);
-
+ 
   const handleBookmark = async () => {
     if (!user) { navigate("/login"); return; }
     try {
@@ -541,7 +538,7 @@ export default function NovelReader() {
       }
     } catch (err) { console.error(err.message); }
   };
-
+ 
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({ title: chapter?.title, url: window.location.href });
@@ -552,7 +549,7 @@ export default function NovelReader() {
       });
     }
   };
-
+ 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     setCommentError("");
@@ -569,7 +566,7 @@ export default function NovelReader() {
       setCommentLoading(false);
     }
   };
-
+ 
   const T = THEMES.find(th => th.key === theme) || THEMES[0];
   const cssVars = {
     "--nr-bg":      T.bg,
@@ -580,7 +577,7 @@ export default function NovelReader() {
     "--nr-border":  T.border,
     "--nr-bar-bg":  T.barBg,
   };
-
+ 
   if (loading) return (
     <div className="nr-loading" style={{ background:T.bg, color:T.muted }}
       role="status" aria-live="polite">
@@ -593,7 +590,7 @@ export default function NovelReader() {
       <p>{t("nr_novel_not_found")}</p>
     </div>
   );
-
+ 
   const chapters     = novel.chapters || [];
   const currentIndex = chapters.findIndex(c => c._id === chapterId);
   if (currentIndex === -1) return (
@@ -601,20 +598,35 @@ export default function NovelReader() {
       <p>{t("nr_ch_not_found")}</p>
     </div>
   );
-
+ 
   const chapter = chapters[currentIndex];
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < chapters.length - 1;
   const goTo    = (idx) => navigate(`/novel/${novelId}/chapter/${chapters[idx]._id}`);
-
+ 
   const displayTitle   = (displayLang !== "en" && translatedTitle)   ? translatedTitle   : chapter.title;
   const displayContent = (displayLang !== "en" && translatedContent) ? translatedContent : chapter.content;
-  const contentLang    =
+ 
+  /* ── auto-detect Sinhala / Tamil Unicode script from actual text ──
+     Works even if novel.language is wrong or not set at all.
+     Sinhala block: U+0D80–U+0DFF
+     Tamil block:   U+0B80–U+0BFF                                    */
+  const detectScript = (text = "") => {
+    if (/[\u0D80-\u0DFF]/.test(text)) return "si";
+    if (/[\u0B80-\u0BFF]/.test(text)) return "ta";
+    return "en";
+  };
+ 
+  const originalLang =
+    novel.language === "Sinhala" ? "si" :
+    novel.language === "Tamil"   ? "ta" :
+    detectScript(chapter.content);   // ← fall back to Unicode detection
+ 
+  const contentLang =
     displayLang === "si" ? "si" :
     displayLang === "ta" ? "ta" :
-    novel.language === "Sinhala" ? "si" :
-    novel.language === "Tamil"   ? "ta" : "en";
-
+    originalLang;
+ 
   return (
     <div
       className={`nr-shell${mounted ? " in" : ""}`}
@@ -629,14 +641,14 @@ export default function NovelReader() {
         aria-label={`Reading progress: ${scrollPct}%`}>
         <div className="nr-scroll-fill" style={{ width:`${scrollPct}%` }}/>
       </div>
-
+ 
       {shareToast && (
         <div className="nr-share-toast"
           role="status" aria-live="polite" aria-atomic="true">
           {t("nr_link_copied")}
         </div>
       )}
-
+ 
       <header className="nr-topbar">
         <button className="nr-back-btn"
           onClick={() => navigate(`/novel/${novelId}`)}
@@ -648,7 +660,7 @@ export default function NovelReader() {
           </svg>
           {t("nr_back")}
         </button>
-
+ 
         <div className="nr-topbar-center" aria-hidden="true">
           <span className="nr-novel-name">{novel.title}</span>
           <span className="nr-divider">·</span>
@@ -674,7 +686,7 @@ export default function NovelReader() {
             </span>
           )}
         </div>
-
+ 
         <div className="nr-topbar-right">
           <div className="nr-settings-wrap" ref={settingsRef}>
             <button
@@ -732,7 +744,7 @@ export default function NovelReader() {
               </div>
             )}
           </div>
-
+ 
           <button className="nr-chapters-btn"
             onClick={() => setShowNav(v => !v)}
             aria-expanded={showNav}
@@ -747,7 +759,7 @@ export default function NovelReader() {
           </button>
         </div>
       </header>
-
+ 
       {showNav && (
         <div className="nr-nav-drawer"
           role="dialog" aria-modal="true"
@@ -786,9 +798,9 @@ export default function NovelReader() {
           </div>
         </div>
       )}
-
+ 
       <main className="nr-main">
-
+ 
         <div className="nr-chapter-head">
           <p className="nr-chapter-meta">
             {t("nr_chapter")} {currentIndex+1} {t("nr_of")} {chapters.length}
@@ -799,7 +811,7 @@ export default function NovelReader() {
             {novel.author?.name && ` · by ${novel.author.name}`}
           </p>
         </div>
-
+ 
         {checkingUnlock && (
           <div style={{
             display:"flex", justifyContent:"center",
@@ -810,7 +822,7 @@ export default function NovelReader() {
             <p style={{ fontSize:13 }}>Checking access…</p>
           </div>
         )}
-
+ 
         {!checkingUnlock && !isUnlocked && (
           <LockedGate
             chapter={chapter}
@@ -824,7 +836,7 @@ export default function NovelReader() {
             onLogin={() => navigate("/login")}
           />
         )}
-
+ 
         {!checkingUnlock && isUnlocked && (
           <>
             <TranslationBar
@@ -836,7 +848,7 @@ export default function NovelReader() {
               progressMsg={progressMsg}
               t={t}
             />
-
+ 
             <article
               className="nr-content"
               lang={contentLang}
@@ -844,12 +856,25 @@ export default function NovelReader() {
             >
               {translating
                 ? <TranslatingSkeleton/>
-                : (displayContent || "").split("\n").map((para, i) =>
-                    para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
-                  )
+                : (() => {
+                    const raw = displayContent || "";
+                    /* If the content contains HTML tags, render it as markup.
+                       Otherwise fall back to the plain-text paragraph split. */
+                    if (/<[a-z][\s\S]*>/i.test(raw)) {
+                      return (
+                        <div
+                          className="nr-html-content"
+                          dangerouslySetInnerHTML={{ __html: raw }}
+                        />
+                      );
+                    }
+                    return raw.split("\n").map((para, i) =>
+                      para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
+                    );
+                  })()
               }
             </article>
-
+ 
             <nav className="nr-nav-btns" aria-label="Chapter navigation">
               <button
                 className={`nr-nav-btn${hasPrev?"": " disabled"}`}
@@ -885,7 +910,7 @@ export default function NovelReader() {
             </nav>
           </>
         )}
-
+ 
         <section className="nr-comments" aria-label={t("nr_comments")}>
           <h2 className="nr-comments-title">
             {t("nr_comments")}
@@ -896,7 +921,7 @@ export default function NovelReader() {
               </span>
             )}
           </h2>
-
+ 
           {user ? (
             <form className="nr-comment-form"
               onSubmit={handleCommentSubmit}
@@ -941,7 +966,7 @@ export default function NovelReader() {
               <button onClick={() => navigate("/login")}>{t("nr_login_btn")}</button>
             </div>
           )}
-
+ 
           {comments.length === 0 ? (
             <div className="nr-no-comments" role="status">
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
@@ -975,10 +1000,10 @@ export default function NovelReader() {
             </div>
           )}
         </section>
-
+ 
         <div style={{ height:80 }}/>
       </main>
-
+ 
       <div className="nr-pill-bar" role="toolbar" aria-label="Reading actions">
         <button
           className={`nr-pill-btn${liked?" liked":""}`}
@@ -994,9 +1019,9 @@ export default function NovelReader() {
           <span aria-hidden="true">{likeCount}</span>
           <span className="sr-only">{likeCount} likes</span>
         </button>
-
+ 
         <div className="nr-pill-sep" aria-hidden="true"/>
-
+ 
         <button
           className={`nr-pill-btn${bookmarked?" bookmarked":""}`}
           onClick={handleBookmark}
@@ -1009,9 +1034,9 @@ export default function NovelReader() {
             <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
           </svg>
         </button>
-
+ 
         <div className="nr-pill-sep" aria-hidden="true"/>
-
+ 
         <button className="nr-pill-btn" onClick={handleShare}
           aria-label="Share this chapter">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -1024,9 +1049,9 @@ export default function NovelReader() {
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
         </button>
-
+ 
         <div className="nr-pill-sep" aria-hidden="true"/>
-
+ 
         <span className="nr-pill-pct"
           role="progressbar"
           aria-valuenow={scrollPct}
