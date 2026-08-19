@@ -115,7 +115,6 @@ export default function CoinShop() {
   const { fetchPoints } = useContext(PointsContext);
   const { t }           = useLang();
 
-  /* payment methods — rebuilt when lang changes */
   const METHODS = [
     { key: "card",    label: t("cs_method_card")    },
     { key: "mobile",  label: t("cs_method_mobile")  },
@@ -145,6 +144,7 @@ export default function CoinShop() {
     window.payhere.onCompleted = async () => {
       setSuccess(true);
       setPaying(false);
+      // Refresh balance after successful payment
       if (token) {
         try {
           const bal = await apiFetch.getBalance(token);
@@ -173,10 +173,11 @@ export default function CoinShop() {
       .catch(() => {});
   }, [token]);
 
+  // Reload history whenever panel opens or a payment succeeds
   useEffect(() => {
     if (!showHistory || !token) return;
     apiFetch.getHistory(token).then(setHistory).catch(() => setHistory([]));
-  }, [showHistory, token]);
+  }, [showHistory, token, success]);
 
   const pkg = packages[selIdx] ?? packages[0] ?? {};
 
@@ -196,12 +197,20 @@ export default function CoinShop() {
     setPaying(true);
     try {
       const order = await apiFetch.createOrder(token, pkg.packageId);
+
+      console.log("[PayHere] Starting payment with notify_url:", order.notifyUrl);
+
       window.payhere.startPayment({
         sandbox:     true,
         merchant_id: order.merchantId,
         return_url:  `${window.location.origin}/coins/success`,
         cancel_url:  `${window.location.origin}/coins`,
-        notify_url:  `${API_URL}/points/notify`,
+
+        // ✅ FIX: use order.notifyUrl (built from NGROK_URL on the backend)
+        //    NOT `${API_URL}/points/notify` — that points to localhost which
+        //    PayHere's servers cannot reach.
+        notify_url:  order.notifyUrl,
+
         order_id:    order.orderId,
         items:       `${pkg.coins} Navella Coins`,
         amount:      order.amount,
@@ -221,7 +230,6 @@ export default function CoinShop() {
     }
   };
 
-  /* perks — rebuilt when lang changes */
   const perks = [
     { ico: IC.book, color: "violet", title: t("cs_unlock"),      desc: t("cs_unlock_desc") },
     { ico: IC.star, color: "amber",  title: t("cs_support"),     desc: t("cs_support_desc") },
